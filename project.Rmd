@@ -1,0 +1,135 @@
+---
+title: "CITS4009 Project - Exploratory Data Analysis and Predictive Modeling"
+author: "Binghan CHEN(23965953)"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+```
+
+# Introduction
+
+The objective of this project is to perform exploratory data analysis (EDA) and predictive modeling using the "Countries and Death Causes" dataset provided by the World Health Organisation (WHO). This dataset includes various health-related metrics for different countries over several years. The goal is to uncover insights from the data and build predictive models to understand the factors influencing death rates.
+
+# Section 1: Exploratory Study of the Data
+
+## Data Overview
+
+### Loading the Dataset
+
+```{r load-data}
+
+# Load necessary libraries
+library(ggplot2)
+library(dplyr)
+library(tidyr)
+library(knitr)
+
+# Read the dataset (replace 'path_to_your_file.csv' with your actual file path)
+data <- read.csv("Countries_and_Death_Causes.csv", stringsAsFactors = FALSE)
+
+# Display the first few rows of the dataset
+head(data)
+
+```
+
+### Understanding the Structure of the Data
+
+```{r}
+str(data)
+```
+
+### Summary Statistics
+
+```{r}
+summary(data)
+```
+
+## Data Cleaning
+
+### Checking for Missing Values
+
+```{r}
+# Function to count missing values in each column
+count_missing <- function(df) {
+  sapply(df, function(col) sum(is.na(col)))
+}
+
+nacounts <- count_missing(data) 
+hasNA <- which(nacounts > 0) 
+nacounts[hasNA]
+```
+
+### Handling Missing Values
+Based on the missing values identified, we will decide how to handle them—either by removing rows with missing values or by imputing them.
+
+```{r}
+# Remove rows with any missing values
+data_clean <- na.omit(data)
+
+# Verify that missing values are handled
+count_missing(data_clean)
+```
+
+### Handling Data Anomalies
+Identify and handle any outliers or anomalies in the data that may affect the analysis.
+
+```{r}
+# Example: Detecting outliers in 'Outdoor air pollution' using boxplot
+ggplot(data_clean, aes(y = Outdoor.air.pollution)) +
+  geom_boxplot(fill = "lightblue") +
+  labs(title = "Boxplot of Outdoor Air Pollution", y = "Outdoor Air Pollution") +
+  theme_minimal()
+```
+Describe any actions taken to handle anomalies, such as removing outliers or transforming data.
+Actions Based on Outliers:
+
+Remove Outliers: If outliers are errors or anomalies not relevant to the analysis.
+Transform Data: Apply transformations like log or square root to reduce the impact of outliers.
+{r
+Copy code
+# Example: Removing outliers in 'Outdoor air pollution' beyond 1.5*IQR
+Q1 <- quantile(data_clean$Outdoor.air.pollution, 0.25)
+Q3 <- quantile(data_clean$Outdoor.air.pollution, 0.75)
+IQR <- Q3 - Q1
+
+# Define lower and upper bounds
+lower_bound <- Q1 - 1.5 * IQR
+upper_bound <- Q3 + 1.5 * IQR
+
+# Filter out the outliers
+data_clean <- data_clean %>%
+  filter(Outdoor.air.pollution >= lower_bound & Outdoor.air.pollution <= upper_bound)
+
+# Verify the removal
+ggplot(data_clean, aes(y = Outdoor.air.pollution)) +
+  geom_boxplot(fill = "lightgreen") +
+  labs(title = "Boxplot of Outdoor Air Pollution (After Outlier Removal)", y = "Outdoor Air Pollution") +
+  theme_minimal()
+
+### Final Cleaned Dataset
+After handling missing values and anomalies, we have a clean dataset ready for further analysis.
+
+```{r
+Copy code
+# Display the first few rows of the cleaned dataset
+head(data_clean)
+```
+
+Provide a brief summary of the cleaning steps and their impact on the dataset.
+
+## Visualizations Transformations 
+This section will include various visualizations and analyses to uncover insights from the data.
+
+## Shiny App
+
+# Section 2: Predictive Modeling
+This section will involve building and evaluating classification models.
+## Classification
+# Section 3: Clustering
+This section will involve performing clustering analysis to discover patterns in the data.
+
+# Conclusion
+Summarize the key findings and insights from your analysis.
