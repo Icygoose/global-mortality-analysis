@@ -1,0 +1,17 @@
+ggplot2
+dplyr
+tidyr
+knitr
+corrplot
+tidyverse
+tibble
+readr
+purrr
+stringr
+forcats
+lubridate
+lattice
+caret
+rpart
+rpart.plot
+pROC

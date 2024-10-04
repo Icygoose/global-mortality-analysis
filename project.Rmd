@@ -3,10 +3,6 @@ title: "CITS4009 Project - Exploratory Data Analysis and Predictive Modeling"
 author: "Binghan CHEN(23965953)"
 date: "`r Sys.Date()`"
 output: html_document
-  toc: true
-  toc_float: true
-  toc_depth: 2
-runtime: shiny
 ---
 
 ```{r setup, include=FALSE}
@@ -15,7 +11,7 @@ knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 
 # **Introduction**
 
-The objective of this project is to perform exploratory data analysis (EDA) and predictive modeling using the "Countries and Death Causes" dataset provided by the World Health Organisation (WHO). This dataset encompasses various health-related metrics for different countries over several years. The primary goal is to uncover insights from the data and build predictive models to understand the factors influencing death rates. By analyzing these factors, we aim to identify key determinants of health outcomes and provide actionable recommendations for improving public health policies.
+The objective of this project is to perform exploratory data analysis (EDA) and predictive modeling using the "Countries and Death Causes" dataset provided by the World Health Organisation (WHO). This dataset encompasses various health-related metrics for different countries over several years. Additionally, by integrating **GDP per Capita** data from the World Bank, we aim to examine the interplay between economic status and mortality rates. The primary goal is to uncover insights from the data and build predictive models to understand the factors influencing death rates. By analyzing these health and socioeconomic factors, we aim to identify key determinants of health outcomes and provide actionable recommendations for improving public health policies.
 
 # **Section 1: Exploratory Study of the Data**
 
@@ -23,7 +19,7 @@ The objective of this project is to perform exploratory data analysis (EDA) and 
 
 ### **1.1.1. Loading the Dataset**
 
-```{r load-data}
+```{r load-data, cache=TRUE}
 
 # Load necessary libraries
 library(ggplot2)
@@ -67,7 +63,7 @@ Summary statistics highlight significant variability in key health indicators:
 
 ### **1.2.1. Checking for Missing Values**
 
-```{r miss-data}
+```{r miss-data, cache=TRUE}
 # Function to count missing values in each column
 count_missing <- function(df) {
   sapply(df, function(col) sum(is.na(col)))
@@ -94,7 +90,7 @@ To ensure the accuracy and reliability of our analysis, it is essential to ident
 
 We utilized the Interquartile Range (IQR) method to detect outliers in the selected variables. The IQR method is effective in identifying extreme values that lie beyond 1.5 times the IQR above the third quartile or below the first quartile.
 
-```{r anomalies-data}
+```{r anomalies-data, cache=TRUE}
 # Create a clean copy of the dataset
 data_clean <- data
 
@@ -162,9 +158,9 @@ After addressing missing values and removing significant outliers, the dataset i
 head(data_clean)
 ```
 
-## **1.3 Visualisation**
+## **1.3. Visualisation**
 
-### **1.3.1 Single Variable Visualisation**
+### **1.3.1. Single Variable Visualisation**
 
 We begin by exploring some key variables from the dataset to understand their distribution and general patterns. 
 
@@ -172,7 +168,7 @@ We begin by exploring some key variables from the dataset to understand their di
 
 A histogram shows the distribution of pollution levels, and a boxplot identifies outliers. This variable is critical for understanding environmental factors contributing to health outcomes.
 
-```{r plot-Outdoor.air.pollution}
+```{r plot-Outdoor.air.pollution, cache=TRUE}
 # Histogram
 ggplot(data_clean, aes(x = Outdoor.air.pollution)) +
   geom_histogram(fill = "blue", bins = 30, color = "black") +
@@ -194,7 +190,7 @@ ggplot(data_clean, aes(y = Outdoor.air.pollution)) +
 
 We visualize the distribution of systolic blood pressure levels to identify typical ranges and extreme values.
 
-```{r plot-High.systolic.blood.pressure}
+```{r plot-High.systolic.blood.pressure, cache=TRUE}
 # Histogram
 ggplot(data_clean, aes(x = High.systolic.blood.pressure)) +
   geom_histogram(fill = "orange", bins = 30, color = "black") +
@@ -216,7 +212,7 @@ ggplot(data_clean, aes(y = High.systolic.blood.pressure)) +
 
 Here, we examine the distribution of smoking rates across countries, focusing on global smoking patterns.
 
-```{r plot-Smoking}
+```{r plot-Smoking, cache=TRUE}
 # Histogram
 ggplot(data_clean, aes(x = Smoking)) +
   geom_histogram(fill = "purple", bins = 30, color = "black") +
@@ -238,7 +234,7 @@ ggplot(data_clean, aes(y = Smoking)) +
 
 This visualization looks at sodium consumption patterns across countries, which is a major factor contributing to heart disease.
 
-```{r plot-Diet.high.in.sodium}
+```{r plot-Diet.high.in.sodium, cache=TRUE}
 # Histogram
 ggplot(data_clean, aes(x = Diet.high.in.sodium)) +
   geom_histogram(fill = "red", bins = 30, color = "black") +
@@ -256,7 +252,7 @@ ggplot(data_clean, aes(y = Diet.high.in.sodium)) +
 
 **Boxplot:** The boxplot also displays outliers, suggesting that some countries consume a notably higher amount of sodium than the average.
 
-### **1.3.2 Multiple Variable Visualisation**
+### **1.3.2. Multiple Variable Visualisation**
 
 We will explore relationships between different variables to identify any potential correlations, trends, or interesting patterns. A common way to visualize these relationships is by using scatter plots, correlation heatmaps, or pair plots.
 
@@ -276,7 +272,7 @@ This explores the well-known relationship between sodium intake and high blood p
 
 Investigating whether countries with high smoking rates also have higher sodium consumption, which might reflect unhealthy lifestyle correlations.
 
-```{r plot-multi-var}
+```{r plot-multi-var, cache=TRUE}
 # Multiple variable visualisation - Scatterplots
 
 # 1. Outdoor Air Pollution vs. High Systolic Blood Pressure
@@ -308,7 +304,7 @@ ggplot(data_clean, aes(x = Smoking, y = Diet.high.in.sodium)) +
   theme_minimal()
 ```
 
-```{r plot-corr, fig.width=10, fig.height=10}
+```{r plot-corr, fig.width=10, fig.height=10, cache=TRUE}
 # 5. Correlation heatmap (if multiple variables are being explored at once)
 library(corrplot)
 numeric_vars <- data_clean[, sapply(data_clean, is.numeric)]
@@ -338,13 +334,13 @@ Interestingly, the relationship between smoking rates and sodium intake is less 
 
 The heatmap provides an overview of the correlations between all variables in the dataset. Darker colors represent stronger positive correlations, while lighter colors indicate weaker or negative relationships. Notably, high systolic blood pressure shows strong correlations with several lifestyle factors, including smoking and diet. Similarly, outdoor air pollution also correlates with multiple health outcomes.
 
-### **1.3.3 Time Series Visualisation**
+### **1.3.3. Time Series Visualisation**
 
 We aim to explore how key health metrics, such as outdoor air pollution, smoking rates, and high systolic blood pressure, have changed over time. Time series visualizations will allow us to identify trends, fluctuations, and patterns across different years.
 
 - **Time Series of Outdoor Air Pollution Over the Years**
 
-```{r plot-time-Outdoor.air.pollution}
+```{r plot-time-Outdoor.air.pollution, cache=TRUE}
 ggplot(data_clean, aes(x = Year, y = Outdoor.air.pollution, color = Entity)) +
   geom_line(linewidth = 1, alpha = 0.7) +   
   theme_minimal() +
@@ -358,7 +354,7 @@ The time series plot for Outdoor Air Pollution shows varied trends among differe
 
 - **Time Series of High Systolic Blood Pressure Over the Years**
 
-```{r plot-time-High.systolic.blood.pressure}
+```{r plot-time-High.systolic.blood.pressure, cache=TRUE}
 # Time Series for High Systolic Blood Pressure
 ggplot(data_clean, aes(x = Year, y = High.systolic.blood.pressure, color = Entity)) +
   geom_line(size = 1, alpha = 0.7) +
@@ -373,7 +369,7 @@ For High Systolic Blood Pressure, the time series visualization reveals that, wh
 
 - **Time Series of Smoking Rates Over the Years**
 
-```{r plot-time-Smoking}
+```{r plot-time-Smoking, cache=TRUE}
 # Time Series for Smoking Rates
 ggplot(data_clean, aes(x = Year, y = Smoking, color = Entity)) +
   geom_line(size = 1, alpha = 0.7) +
@@ -386,10 +382,452 @@ ggplot(data_clean, aes(x = Year, y = Smoking, color = Entity)) +
 
 The Smoking Rates Over Time plot shows a range of trends, with some countries witnessing steady increases in smoking rates, while others experience fluctuations or even a decline over time. The wide variation in smoking behaviors across countries could be due to factors such as public health initiatives, taxation on tobacco, or cultural practices. Despite some regions reducing smoking rates, many countries still show significantly high levels, which can have a direct impact on health-related issues, including high blood pressure and cardiovascular diseases.
 
+# **Section 2: Predictive Modeling**
+
+## **2.1. Problem Definition**
+
+For this project, we aim to predict the **death rate** (high/low) for each country based on various health, socioeconomic, and environmental factors. The death rate serves as the response variable, which we will classify into two categories: **high** and **low** death rates. This binary classification will help to identify patterns and key factors contributing to death rates in different countries.
+
+## **2.2. Data Preparation**
+
+### **2.2.1. Response Variable**
+
+We focus on creating a suitable response variable for the classification task. Given that the provided dataset (`Countries_and_Death_Causes`) does not directly contain death rates, we utilize additional data from the World Bank, specifically **total population** and **GDP per capita**. We aim to create a binary classification problem where countries are categorized based on mortality rates.
+
+**Merging Datasets**:
+
+We merge the `Countries_and_Death_Causes` dataset with the World Bank datasets, `data_population` (total population) and `data_GDP_per_Capita` (GDP per capita), by aligning the **country codes** and **years** in each dataset. This merged dataset will allow us to analyze health factors in relation to population size and economic conditions.
+
+```{r merge-data, cache=TRUE}
+library(tidyverse)
+
+# Load Population and GDP per Capita Data
+population_df <- read_csv("Population_Data.csv")
+gdp_df <- read_csv("GDP_per_Capita_Data.csv")
+
+# Define a function to pivot data from wide to long
+melt_data <- function(df, value_name) {
+  df_long <- df %>%
+    pivot_longer(
+      cols = matches("^\\d{4}$"), # Select columns that are exactly four digits (e.g., 1960)
+      names_to = "Year",
+      values_to = value_name
+    ) %>%
+    mutate(
+      Year = as.integer(Year)
+    )
+  return(df_long)
+}
+
+# Melt Population and GDP Data
+population_long <- melt_data(population_df, "Population") %>%
+  select(-'Indicator Name', -'Indicator Code') %>%
+  drop_na(Population) %>%
+  mutate(Population = as.numeric(Population))
+
+gdp_long <- melt_data(gdp_df, "GDP_per_Capita") %>%
+  select(-'Indicator Name', -'Indicator Code') %>%
+  drop_na(GDP_per_Capita) %>%
+  mutate(GDP_per_Capita = as.numeric(GDP_per_Capita))
+
+# Ensure Year is integer in data_clean
+data_clean <- data_clean %>%
+  mutate(Year = as.integer(Year))
+
+# Merge data_clean with Population Data
+merged_df <- data_clean %>%
+  left_join(population_long, by = c("Code" = "Country Code", "Year" = "Year"))
+
+# Merge with GDP per Capita Data
+merged_df <- merged_df %>%
+  left_join(gdp_long, by = c("Code" = "Country Code", "Year" = "Year"))
+
+# Remove rows with missing Population or GDP_per_Capita after merge
+merged_df <- merged_df %>%
+  drop_na(Population, GDP_per_Capita)
+
+# Retain only rows where Country.Code has exactly three letters
+merged_df <- merged_df %>%
+  filter(str_length(Code) == 3)
+
+# Identify valid Country Codes from population_long and gdp_long
+valid_country_codes <- intersect(population_long$'Country Code', gdp_long$'Country Code')
+
+# Filter merged_df to include only valid Country Codes
+merged_df <- merged_df %>%
+  filter(Code %in% valid_country_codes)
+
+# Check for duplicate rows based on Country.Code and Year
+duplicated_rows <- merged_df %>%
+  group_by(Code, Year) %>%
+  filter(n() > 1)
+
+# Handle Duplicates
+if(nrow(duplicated_rows) > 0){
+  print("Duplicated Rows Found:")
+  print(duplicated_rows)
+  
+  # Optionally, remove duplicates by keeping the first occurrence
+  merged_df <- merged_df %>%
+    distinct(Code, Year, .keep_all = TRUE)
+  
+  print("Duplicates have been removed by keeping the first occurrence.")
+} else {
+  print("No duplicate rows based on Country.Code and Year.")
+}
+
+# Verify specific entries (optional)
+# Example: Check data for Albania in 1990
+albania_1990 <- merged_df %>%
+  filter(Code == "ALB", Year == 1990)
+
+print(albania_1990)
+
+# Save merged dataset to CSV
+write_csv(merged_df, "merged_dataset.csv")
+
+# Confirmation message
+print("Datasets merged and saved successfully!")
+
+```
+
+**Mortality Proxy Calculation**:
+
+To predict the death rate for each country, we construct a **Mortality Proxy** that aggregates various health-related and environmental risk factors. This proxy serves as an estimated measure of mortality risk, combining multiple indicators into a single, comprehensive metric. By normalizing the sum of these factors by the country's total population, we ensure that the proxy accounts for population size, facilitating meaningful comparisons across countries.
+
+The formula for the Mortality Proxy is as follows:
+
+$$
+\small{
+\text{Mortality Proxy} = \frac{\text{Outdoor Air Pollution} + \text{High Systolic Blood Pressure} + \text{Diet High in Sodium} + \dots}{\text{Total Population}}
+}
+$$
+
+This approach assumes that higher values in the aggregated health and environmental factors correspond to increased mortality risks. Dividing by the population yields a per capita measure, allowing us to compare mortality risks between countries with different population sizes.
+
+```{r mortality-proxy, cache=TRUE}
+# Define the health-related variables to include in the Mortality Proxy
+health_vars <- c(
+  "Outdoor.air.pollution",
+  "High.systolic.blood.pressure",
+  "Diet.high.in.sodium",
+  "Alochol.use",
+  "Diet.low.in.whole.grains",
+  "Diet.low.in.fruits",
+  "Unsafe.water.source",
+  "Secondhand.smoke",
+  "Low.birth.weight",
+  "Child.wasting",
+  "Unsafe.sex",
+  "Diet.low.in.nuts.and.seeds",
+  "Household.air.pollution.from.solid.fuels",
+  "Diet.low.in.Vegetables",
+  "Low.physical.activity",
+  "Smoking",
+  "High.fasting.plasma.glucose",
+  "Air.pollution",
+  "High.body.mass.index",
+  "Unsafe.sanitation",
+  "No.access.to.handwashing.facility",
+  "Drug.use",
+  "Low.bone.mineral.density",
+  "Vitamin.A.deficiency",
+  "Child.stunting",
+  "Discontinued.breastfeeding",
+  "Non.exclusive.breastfeeding",
+  "Iron.deficiency"
+)
+
+# Check if all health-related variables are present in merged_df
+missing_vars <- setdiff(health_vars, colnames(merged_df))
+if(length(missing_vars) > 0){
+  stop("The following health-related variables are missing in merged_df: ", paste(missing_vars, collapse = ", "))
+}
+
+# Calculate the Mortality Proxy
+merged_df <- merged_df %>%
+  mutate(
+    Mortality_Proxy = rowSums(select(., all_of(health_vars)), na.rm = TRUE) / Population
+  )
+
+# Display the first few rows to verify the calculation
+head(merged_df %>% select(Code, Year, Mortality_Proxy))
+```
+
+**Defining Binary Classes**:
+
+With the Mortality Proxy calculated, we categorize each country-year observation into two classes: **High Mortality Rate** and **Low Mortality Rate**. This binary classification simplifies the predictive modeling process.
+
+- **High Mortality Rate**: Countries with Mortality Proxy values **above or equal to** the 75th percentile of the distribution.
+- **Low Mortality Rate**: Countries with Mortality Proxy values **below** the 75th percentile of the distribution.
+
+This approach ensures that the top 25% of observations are identified as high-risk, providing a balanced foundation for classification algorithms.
+
+```{r binary-classes, cache=TRUE}
+# Calculate the 75th percentile threshold for Mortality Proxy
+threshold <- quantile(merged_df$Mortality_Proxy, 0.75, na.rm = TRUE)
+
+# Define binary classes based on the threshold
+merged_df <- merged_df %>%
+  mutate(
+    Mortality_Class = if_else(
+      Mortality_Proxy >= threshold,
+      "High Mortality Rate",
+      "Low Mortality Rate"
+    )
+  )
+
+# Verify the distribution of the binary classes
+class_distribution <- table(merged_df$Mortality_Class)
+print(class_distribution)
+
+# Visualize the distribution of Mortality Classes
+ggplot(merged_df, aes(x = Mortality_Class, fill = Mortality_Class)) +
+  geom_bar() +
+  labs(
+    title = "Distribution of Mortality Classes",
+    x = "Mortality Class",
+    y = "Count"
+  ) +
+  theme_minimal() +
+  scale_fill_manual(values = c("High Mortality Rate" = "tomato", "Low Mortality Rate" = "skyblue")) +
+  theme(legend.position = "none")
+```
+
+### **2.2.2. Feature Variables**
+
+We select and prepare the relevant feature variables that will be used to predict the mortality classes. Proper feature selection is crucial as it enhances model performance, reduces complexity, and mitigates the risk of overfitting.
+
+We focus on health-related and socioeconomic variables that are likely to influence mortality rates. Columns with unique values for each observation or those that are categorical without meaningful encoding are excluded to maintain the integrity of the classification models.
+
+```{r feature-var, cache=TRUE}
+# Load necessary libraries
+library(caret)
+
+# Define the list of health-related variables already used in the Mortality Proxy
+health_vars <- c(
+  "Outdoor.air.pollution",
+  "High.systolic.blood.pressure",
+  "Diet.high.in.sodium",
+  "Alochol.use",
+  "Diet.low.in.whole.grains",
+  "Diet.low.in.fruits",
+  "Unsafe.water.source",
+  "Secondhand.smoke",
+  "Low.birth.weight",
+  "Child.wasting",
+  "Unsafe.sex",
+  "Diet.low.in.nuts.and.seeds",
+  "Household.air.pollution.from.solid.fuels",
+  "Diet.low.in.Vegetables",
+  "Low.physical.activity",
+  "Smoking",
+  "High.fasting.plasma.glucose",
+  "Air.pollution",
+  "High.body.mass.index",
+  "Unsafe.sanitation",
+  "No.access.to.handwashing.facility",
+  "Drug.use",
+  "Low.bone.mineral.density",
+  "Vitamin.A.deficiency",
+  "Child.stunting",
+  "Discontinued.breastfeeding",
+  "Non.exclusive.breastfeeding",
+  "Iron.deficiency"
+)
+
+# Select relevant features for modeling
+# Exclude unique identifier columns and any remaining categorical/string variables
+# Assuming 'Entity', 'Country Name.x', 'Country Name.y' are non-informative identifiers
+feature_vars <- c(
+  health_vars,
+  "Population",
+  "GDP_per_Capita"
+)
+
+# Create the final dataset for modeling by selecting the necessary columns
+model_df <- merged_df %>%
+  select(all_of(feature_vars), Mortality_Class)
+
+# Verify that there are no missing values in the selected features
+sum(is.na(model_df))  # Should be 0 if data is clean
+
+# Optional: Remove any rows with missing values if not already handled
+model_df <- model_df %>%
+  drop_na()
+
+# Inspect the first few rows of the prepared feature dataset
+head(model_df)
+```
+
+## **2.3. Null Model**
+
+A **Null Model** serves as a baseline to evaluate the performance of more complex classification models. In this context, the null model predicts the most frequent class for all observations, disregarding any input features. This provides a reference point to determine whether the predictive models offer a meaningful improvement over random or simplistic guessing.
+
+Given the distribution of our binary classes:
+
+- **High Mortality Rate**: 947 observations
+- **Low Mortality Rate**: 2,838 observations
+
+The null model will predict **"Low Mortality Rate"** for every country-year observation since it is the majority class.
+
+```{r null-model, cache=TRUE}
+# Calculate the distribution of the binary classes
+class_distribution <- table(model_df$Mortality_Class)
+print(class_distribution)
+
+# Determine the most frequent class
+most_frequent_class <- names(which.max(class_distribution))
+print(paste("Most Frequent Class:", most_frequent_class))
+
+# Create predictions based on the null model
+null_predictions <- rep(most_frequent_class, nrow(model_df))
+
+# Calculate Accuracy of the Null Model
+null_accuracy <- mean(null_predictions == model_df$Mortality_Class)
+print(paste("Null Model Accuracy:", round(null_accuracy * 100, 2), "%"))
+
+# Generate a Confusion Matrix for the Null Model
+confusion_null <- confusionMatrix(
+  factor(null_predictions, levels = levels(factor(model_df$Mortality_Class))),
+  factor(model_df$Mortality_Class)
+)
+
+print(confusion_null)
+```
+
+**Interpretation of Results:**
+
+- **Accuracy:** The null model achieves an accuracy of **74.98%**, which corresponds to the proportion of the majority class (**Low Mortality Rate**). This means that without considering any features, simply predicting the most frequent class yields an accuracy of approximately **74.98%**.
+- **Confusion Matrix Insights:**
+  - **True Positives** (High Mortality Rate predicted as High): 0
+  - **False Negatives** (High Mortality Rate predicted as Low): 947
+  - **True Negatives** (Low Mortality Rate predicted as Low): 2,838
+  - **False Positives** (Low Mortality Rate predicted as High): 0
+- **Performance Metrics:**
+  - **Sensitivity (Recall) for High Mortality Rate:** 0% (no high mortality rates are correctly predicted)
+  - **Specificity for Low Mortality Rate:** 100% (all low mortality rates are correctly predicted)
+  - **Kappa:** 0, indicating no agreement beyond chance.
+  - **Balanced Accuracy:** 50%, reflecting equal weighting of sensitivity and specificity.
+
+The null model provides a benchmark against which we can assess the effectiveness of our classification models. Any predictive model should aim to outperform this baseline, demonstrating its ability to capture meaningful patterns and relationships within the data. By comparing our models' performance metrics to those of the null model, we can quantify the added value of incorporating health, socioeconomic, and environmental factors into our predictions.
+
+## **2.4. Splitting the Data**
+
+To evaluate the performance of our classification models effectively, it is essential to divide the dataset into separate **training** and **testing** subsets. This separation allows us to train the models on one portion of the data and assess their generalization capabilities on unseen data.
+
+- **Training Set:** Used to build and tune the classification models.
+- **Testing Set:** Used to evaluate the models' performance on new, unseen data, ensuring that the models do not overfit and can generalize well.
+
+An **80/20 split** is commonly used, allocating 80% of the data for training and 20% for testing. This ratio provides a substantial amount of data for model training while retaining enough observations to reliably assess model performance.
+
+```{r split-data, cache=TRUE}
+# Set seed for reproducibility
+set.seed(123)
+
+# Create a partition index for 80% training data
+train_index <- createDataPartition(model_df$Mortality_Class, p = 0.8, list = FALSE)
+
+# Split the data into training and testing sets
+train_data <- model_df[train_index, ]
+test_data  <- model_df[-train_index, ]
+
+# Verify the distribution of classes in training and testing sets
+train_distribution <- table(train_data$Mortality_Class)
+test_distribution  <- table(test_data$Mortality_Class)
+
+print("Training Set Class Distribution:")
+print(train_distribution)
+
+print("Testing Set Class Distribution:")
+print(test_distribution)
+
+# Visualize the class distribution in training and testing sets
+
+# Combine distributions into a single dataframe for plotting
+distribution_df <- data.frame(
+  Class = rep(names(train_distribution), 2),
+  Count = c(train_distribution, test_distribution),
+  Set = rep(c("Training", "Testing"), each = length(train_distribution))
+)
+
+ggplot(distribution_df, aes(x = Class, y = Count, fill = Set)) +
+  geom_bar(stat = "identity", position = "dodge") +
+  labs(
+    title = "Class Distribution in Training and Testing Sets",
+    x = "Mortality Class",
+    y = "Count"
+  ) +
+  theme_minimal() +
+  scale_fill_manual(values = c("Training" = "steelblue", "Testing" = "orange")) +
+  theme(legend.title = element_blank())
+```
+
+The class distribution in both the training and testing sets mirrors the overall distribution of the dataset, maintaining approximately 25% of observations as High Mortality Rate and 75% as Low Mortality Rate. This stratified sampling ensures that both subsets are representative of the entire dataset, facilitating reliable model training and evaluation.
+
+## **2.5. Classification Models**
+
+We develop and evaluate two classification models to predict the **Mortality Class** (**High Mortality Rate** vs. **Low Mortality Rate**) for each country-year observation. The chosen models are:
+
+1. **Decision Tree Classifier**
+2. **Logistic Regression Classifier**
+
+These models are selected for their interpretability and effectiveness in binary classification tasks.
+
+### **2.5.1. Decision Tree Classifier**
+
+Decision Trees are intuitive models that split the data based on feature values to create decision rules leading to the target class. They are easy to visualize and interpret, making them suitable for understanding the factors influencing mortality rates.
+
+```{r classifier-decision-tree, cache=TRUE}
+# Load necessary libraries
+library(rpart)
+library(rpart.plot)
+library(pROC)
+
+# Ensure that Mortality_Class is a factor in both train and test datasets
+train_data$Mortality_Class <- factor(train_data$Mortality_Class, levels = c("Low Mortality Rate", "High Mortality Rate"))
+test_data$Mortality_Class <- factor(test_data$Mortality_Class, levels = c("Low Mortality Rate", "High Mortality Rate"))
+
+# Train the Decision Tree model
+tree_model <- rpart(
+  Mortality_Class ~ ., 
+  data = train_data, 
+  method = "class",
+  control = rpart.control(cp = 0.03)  # cp is the complexity parameter
+)
+
+# Visualize the Decision Tree
+rpart.plot(tree_model, type = 2, extra = 104, fallen.leaves = TRUE, main = "Decision Tree for Mortality Classification", cex = 0.6)
+
+# Predict on the testing set
+tree_predictions <- predict(tree_model, newdata = test_data, type = "class")
+
+# Convert predictions to factor with the same levels as Mortality_Class
+tree_predictions <- factor(tree_predictions, levels = levels(test_data$Mortality_Class))
+
+# Generate Confusion Matrix
+confusion_tree <- confusionMatrix(tree_predictions, test_data$Mortality_Class)
+print(confusion_tree)
+
+# Calculate ROC and AUC for Decision Tree
+tree_prob <- predict(tree_model, newdata = test_data, type = "prob")[,2]
+roc_tree <- roc(response = test_data$Mortality_Class,
+                predictor = tree_prob,
+                levels = c("Low Mortality Rate", "High Mortality Rate"))
+
+# Plot ROC Curve
+plot(roc_tree, col = "blue", main = "ROC Curve - Decision Tree")
+abline(a=0, b=1, lty=2, col="gray")
+
+# Display AUC
+auc_tree <- auc(roc_tree)
+print(paste("Decision Tree AUC:", round(auc_tree, 4)))
+
+```
 
 
-# Section 2: Predictive Modeling
-This section will involve building and evaluating classification models.
+
+
 ## Classification
 # Section 3: Clustering
 This section will involve performing clustering analysis to discover patterns in the data.
