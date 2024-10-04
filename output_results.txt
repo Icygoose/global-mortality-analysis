@@ -1,0 +1,197 @@
+named integer(0)
+named integer(0)
+
+named integer(0)
+                                  Entity 
+                                       0 
+                                    Code 
+                                       0 
+                                    Year 
+                                       0 
+                   Outdoor.air.pollution 
+                                       0 
+            High.systolic.blood.pressure 
+                                       0 
+                     Diet.high.in.sodium 
+                                       0 
+                Diet.low.in.whole.grains 
+                                       0 
+                             Alochol.use 
+                                       0 
+                      Diet.low.in.fruits 
+                                       0 
+                     Unsafe.water.source 
+                                       0 
+                        Secondhand.smoke 
+                                       0 
+                        Low.birth.weight 
+                                       0 
+                           Child.wasting 
+                                       0 
+                              Unsafe.sex 
+                                       0 
+              Diet.low.in.nuts.and.seeds 
+                                       0 
+Household.air.pollution.from.solid.fuels 
+                                       0 
+                  Diet.low.in.Vegetables 
+                                       0 
+                   Low.physical.activity 
+                                       0 
+                                 Smoking 
+                                       0 
+             High.fasting.plasma.glucose 
+                                       0 
+                           Air.pollution 
+                                       0 
+                    High.body.mass.index 
+                                       0 
+                       Unsafe.sanitation 
+                                       0 
+       No.access.to.handwashing.facility 
+                                       0 
+                                Drug.use 
+                                       0 
+                Low.bone.mineral.density 
+                                       0 
+                    Vitamin.A.deficiency 
+                                       0 
+                          Child.stunting 
+                                       0 
+              Discontinued.breastfeeding 
+                                       0 
+             Non.exclusive.breastfeeding 
+                                       0 
+                         Iron.deficiency 
+                                       0 
+named integer(0)
+named integer(0)
+named integer(0)
+   Entity Code Year Outdoor.air.pollution High.systolic.blood.pressure
+1 Albania  ALB 1990                  1017                         4280
+2 Albania  ALB 1991                  1023                         4384
+3 Albania  ALB 1992                   978                         4224
+4 Albania  ALB 1993                   934                         4056
+5 Albania  ALB 1994                   880                         3855
+6 Albania  ALB 1995                   891                         4046
+  Diet.high.in.sodium Diet.low.in.whole.grains Alochol.use Diet.low.in.fruits
+1                1561                      741         289                344
+2                1593                      764         308                355
+3                1530                      738         314                342
+4                1466                      710         322                327
+5                1385                      673         321                307
+6                1446                      707         351                320
+  Unsafe.water.source Secondhand.smoke Low.birth.weight Child.wasting Unsafe.sex
+1                  53              902              731           840         47
+2                  54              926              723           836         49
+3                  52              892              710           809         47
+4                  47              849              696           763         45
+5                  57              790              679           704         44
+6                  29              773              648           600         47
+  Diet.low.in.nuts.and.seeds Household.air.pollution.from.solid.fuels
+1                        309                                     1978
+2                        317                                     2033
+3                        304                                     1964
+4                        289                                     1881
+5                        271                                     1771
+6                        281                                     1792
+  Diet.low.in.Vegetables Low.physical.activity Smoking High.fasting.plasma.glucose
+1                    186                   117    2752                         868
+2                    186                   119    2809                         902
+3                    174                   115    2705                         884
+4                    162                   111    2603                         865
+5                    147                   106    2453                         837
+6                    148                   111    2550                         893
+  Air.pollution High.body.mass.index Unsafe.sanitation
+1          2965                 1417                31
+2          3038                 1463                32
+3          2928                 1415                31
+4          2800                 1363                28
+5          2632                 1301                34
+6          2660                 1371                18
+  No.access.to.handwashing.facility Drug.use Low.bone.mineral.density
+1                                67       64                       44
+2                                70       68                       48
+3                                68       69                       45
+4                                64       72                       44
+5                                60       75                       42
+6                                52       80                       44
+  Vitamin.A.deficiency Child.stunting Discontinued.breastfeeding
+1                   29            390                          2
+2                    4            355                          2
+3                    3            342                          2
+4                    3            320                          2
+5                    4            291                          2
+6                    2            245                          1
+  Non.exclusive.breastfeeding Iron.deficiency
+1                         171               4
+2                         170               4
+3                         163               3
+4                         151               3
+5                         142               2
+6                         117               2
+   Entity Code Year Outdoor.air.pollution High.systolic.blood.pressure
+1 Albania  ALB 1990                  1017                         4280
+2 Albania  ALB 1991                  1023                         4384
+3 Albania  ALB 1992                   978                         4224
+4 Albania  ALB 1993                   934                         4056
+5 Albania  ALB 1994                   880                         3855
+6 Albania  ALB 1995                   891                         4046
+  Diet.high.in.sodium Diet.low.in.whole.grains Alochol.use Diet.low.in.fruits
+1                1561                      741         289                344
+2                1593                      764         308                355
+3                1530                      738         314                342
+4                1466                      710         322                327
+5                1385                      673         321                307
+6                1446                      707         351                320
+  Unsafe.water.source Secondhand.smoke Low.birth.weight Child.wasting Unsafe.sex
+1                  53              902              731           840         47
+2                  54              926              723           836         49
+3                  52              892              710           809         47
+4                  47              849              696           763         45
+5                  57              790              679           704         44
+6                  29              773              648           600         47
+  Diet.low.in.nuts.and.seeds Household.air.pollution.from.solid.fuels
+1                        309                                     1978
+2                        317                                     2033
+3                        304                                     1964
+4                        289                                     1881
+5                        271                                     1771
+6                        281                                     1792
+  Diet.low.in.Vegetables Low.physical.activity Smoking High.fasting.plasma.glucose
+1                    186                   117    2752                         868
+2                    186                   119    2809                         902
+3                    174                   115    2705                         884
+4                    162                   111    2603                         865
+5                    147                   106    2453                         837
+6                    148                   111    2550                         893
+  Air.pollution High.body.mass.index Unsafe.sanitation
+1          2965                 1417                31
+2          3038                 1463                32
+3          2928                 1415                31
+4          2800                 1363                28
+5          2632                 1301                34
+6          2660                 1371                18
+  No.access.to.handwashing.facility Drug.use Low.bone.mineral.density
+1                                67       64                       44
+2                                70       68                       48
+3                                68       69                       45
+4                                64       72                       44
+5                                60       75                       42
+6                                52       80                       44
+  Vitamin.A.deficiency Child.stunting Discontinued.breastfeeding
+1                   29            390                          2
+2                    4            355                          2
+3                    3            342                          2
+4                    3            320                          2
+5                    4            291                          2
+6                    2            245                          1
+  Non.exclusive.breastfeeding Iron.deficiency
+1                         171               4
+2                         170               4
+3                         163               3
+4                         151               3
+5                         142               2
+6                         117               2
+[1] TRUE
+[1] "D:/èµ\u0084æ\u0096\u0099/ONEDRIVE/UWA/OneDrive - The University of Western Australia/UWA/COURSE/2024 SEM-2/CITS4009 R/PROJECT"

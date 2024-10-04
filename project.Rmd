@@ -3,21 +3,25 @@ title: "CITS4009 Project - Exploratory Data Analysis and Predictive Modeling"
 author: "Binghan CHEN(23965953)"
 date: "`r Sys.Date()`"
 output: html_document
+  toc: true
+  toc_float: true
+  toc_depth: 2
+runtime: shiny
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
 ```
 
-# Introduction
+# **Introduction**
 
-The objective of this project is to perform exploratory data analysis (EDA) and predictive modeling using the "Countries and Death Causes" dataset provided by the World Health Organisation (WHO). This dataset includes various health-related metrics for different countries over several years. The goal is to uncover insights from the data and build predictive models to understand the factors influencing death rates.
+The objective of this project is to perform exploratory data analysis (EDA) and predictive modeling using the "Countries and Death Causes" dataset provided by the World Health Organisation (WHO). This dataset encompasses various health-related metrics for different countries over several years. The primary goal is to uncover insights from the data and build predictive models to understand the factors influencing death rates. By analyzing these factors, we aim to identify key determinants of health outcomes and provide actionable recommendations for improving public health policies.
 
-# Section 1: Exploratory Study of the Data
+# **Section 1: Exploratory Study of the Data**
 
-## Data Overview
+## **1.1. Data Overview**
 
-### Loading the Dataset
+### **1.1.1. Loading the Dataset**
 
 ```{r load-data}
 
@@ -27,7 +31,7 @@ library(dplyr)
 library(tidyr)
 library(knitr)
 
-# Read the dataset (replace 'path_to_your_file.csv' with your actual file path)
+# Read the dataset 
 data <- read.csv("Countries_and_Death_Causes.csv", stringsAsFactors = FALSE)
 
 # Display the first few rows of the dataset
@@ -35,23 +39,35 @@ head(data)
 
 ```
 
-### Understanding the Structure of the Data
+The dataset includes 6,840 observations spanning from 1990 to 2019, covering various health and socio-economic indicators for different countries. Initial observations reveal a diverse range of metrics such as air pollution levels, blood pressure, dietary habits, and child health indicators, providing a comprehensive foundation for analysis.
+
+### **1.1.2. Understanding the Structure of the Data**
 
 ```{r}
 str(data)
 ```
 
-### Summary Statistics
+The data frame consists of 31 variables, both categorical (e.g., `Entity`, `Code`) and numerical (e.g., `Outdoor.air.pollution`, `High.systolic.blood.pressure`). This structure allows for multifaceted analysis of health-related factors influencing mortality rates across countries and years.
+
+### **1.1.3. Summary Statistics**
 
 ```{r}
 summary(data)
 ```
 
-## Data Cleaning
+Summary statistics highlight significant variability in key health indicators:
 
-### Checking for Missing Values
+- **Outdoor Air Pollution:** Ranges widely from 0 to over 4.5 million, indicating diverse environmental conditions.
+- **High Systolic Blood Pressure:** Values vary from 2 to over 10 million, reflecting differing health profiles.
+- **Dietary Factors:** Median sodium intake is 969.5, with substantial values in whole grains and fruits consumption.
+- **Lifestyle Indicators:** Moderate alcohol use (median ~1,780) and significant smoking rates (median ~4,987) suggest prevalent lifestyle risks.
+- **Child Health Metrics:** Median values for child wasting and stunting indicate ongoing nutritional challenges.
 
-```{r}
+## **1.2. Data Cleaning**
+
+### **1.2.1. Checking for Missing Values**
+
+```{r miss-data}
 # Function to count missing values in each column
 count_missing <- function(df) {
   sapply(df, function(col) sum(is.na(col)))
@@ -62,68 +78,315 @@ hasNA <- which(nacounts > 0)
 nacounts[hasNA]
 ```
 
-### Handling Missing Values
-Based on the missing values identified, we will decide how to handle them—either by removing rows with missing values or by imputing them.
+The analysis for missing values across all columns indicated that there are no missing entries in the dataset. Each variable is fully populated, ensuring data completeness and eliminating the need for imputation or the removal of incomplete records in subsequent analyses.
 
-```{r}
-# Remove rows with any missing values
-data_clean <- na.omit(data)
+### **1.2.2. Handling Data Anomalies**
 
-# Verify that missing values are handled
-count_missing(data_clean)
+To ensure the accuracy and reliability of our analysis, it is essential to identify and address anomalies in the dataset. Outliers can skew results and lead to misleading interpretations. We focused on the following key variables for anomaly detection and removal:
+
+- **Outdoor Air Pollution**
+- **High Systolic Blood Pressure**
+- **Diet High in Sodium**
+- **Smoking**
+- **High Body Mass Index**
+
+**Detecting and Removing Outliers**
+
+We utilized the Interquartile Range (IQR) method to detect outliers in the selected variables. The IQR method is effective in identifying extreme values that lie beyond 1.5 times the IQR above the third quartile or below the first quartile.
+
+```{r anomalies-data}
+# Create a clean copy of the dataset
+data_clean <- data
+
+# List of numerical columns to check for anomalies
+key_numeric_cols <- c("Outdoor.air.pollution", 
+                      "High.systolic.blood.pressure", 
+                      "Diet.high.in.sodium", 
+                      "Smoking", 
+                      "High.body.mass.index")
+
+# Function to remove outliers based on IQR for a given column
+remove_outliers <- function(df, column) {
+  Q1 <- quantile(df[[column]], 0.25, na.rm = TRUE)
+  Q3 <- quantile(df[[column]], 0.75, na.rm = TRUE)
+  IQR <- Q3 - Q1
+  lower_bound <- Q1 - 1.5 * IQR
+  upper_bound <- Q3 + 1.5 * IQR
+  df_filtered <- df %>%
+    filter(df[[column]] >= lower_bound & df[[column]] <= upper_bound)
+  return(df_filtered)
+}
+
+# Iterate over each key column and remove outliers
+for(col in key_numeric_cols){
+  # Plot boxplot before removing outliers
+  p_before <- ggplot(data_clean, aes_string(y = col)) +
+    geom_boxplot(fill = "lightblue") +
+    labs(title = paste("Boxplot of", col, "(Before Outlier Removal)"), y = col) +
+    theme_minimal()
+  
+  print(p_before)
+  
+  # Remove outliers
+  data_clean <- remove_outliers(data_clean, col)
+  
+  # Plot boxplot after removing outliers
+  p_after <- ggplot(data_clean, aes_string(y = col)) +
+    geom_boxplot(fill = "lightgreen") +
+    labs(title = paste("Boxplot of", col, "(After Outlier Removal)"), y = col) +
+    theme_minimal()
+  
+  print(p_after)
+}
 ```
 
-### Handling Data Anomalies
-Identify and handle any outliers or anomalies in the data that may affect the analysis.
+- **Outdoor Air Pollution:** The initial boxplot indicated extreme values for outdoor air pollution, with outliers exceeding 4 million. After removing these anomalies, the distribution became more uniform, reflecting typical pollution levels across regions.
+
+- **High Systolic Blood Pressure:** Outliers in this variable showed abnormally high blood pressure readings, some above 200,000. Post-removal, the values were constrained to a more realistic range under 40,000, providing a clearer picture of general health trends.
+
+- **Diet High in Sodium:** Initially, sodium consumption values spiked over 15,000, far exceeding normal dietary patterns. After filtering, the maximum value was brought below 3,000, offering a more accurate reflection of sodium consumption.
+
+- **Smoking:** Countries with exceedingly high smoking rates caused outliers in this variable, which were removed to reveal a more typical distribution of global smoking behaviors under 10,000.
+
+- **High Body Mass Index:** The boxplot showed extreme BMI values exceeding 20,000, which were removed to keep the data within a reasonable range (below 8,000), ensuring a valid analysis of BMI-related health trends.
+
+**Summary of Data Cleaning**
+
+By addressing outliers in these key health-related variables, we have cleaned the dataset to minimize the risk of skewed analysis. This ensures that the exploratory study and predictive modeling reflect realistic trends and patterns in the global health data.
+
+### **1.2.3. Final Cleaned Dataset**
+After addressing missing values and removing significant outliers, the dataset is now cleaned and ready for further exploratory analysis and predictive modeling. The removal of extreme outliers has ensured that the distributions of key health-related variables such as air pollution, blood pressure, sodium consumption, smoking rates, and BMI are more representative of typical global trends. This clean dataset offers a reliable foundation for uncovering meaningful insights and building predictive models.
 
 ```{r}
-# Example: Detecting outliers in 'Outdoor air pollution' using boxplot
-ggplot(data_clean, aes(y = Outdoor.air.pollution)) +
-  geom_boxplot(fill = "lightblue") +
-  labs(title = "Boxplot of Outdoor Air Pollution", y = "Outdoor Air Pollution") +
-  theme_minimal()
-```
-Describe any actions taken to handle anomalies, such as removing outliers or transforming data.
-Actions Based on Outliers:
-
-Remove Outliers: If outliers are errors or anomalies not relevant to the analysis.
-Transform Data: Apply transformations like log or square root to reduce the impact of outliers.
-{r
-Copy code
-# Example: Removing outliers in 'Outdoor air pollution' beyond 1.5*IQR
-Q1 <- quantile(data_clean$Outdoor.air.pollution, 0.25)
-Q3 <- quantile(data_clean$Outdoor.air.pollution, 0.75)
-IQR <- Q3 - Q1
-
-# Define lower and upper bounds
-lower_bound <- Q1 - 1.5 * IQR
-upper_bound <- Q3 + 1.5 * IQR
-
-# Filter out the outliers
-data_clean <- data_clean %>%
-  filter(Outdoor.air.pollution >= lower_bound & Outdoor.air.pollution <= upper_bound)
-
-# Verify the removal
-ggplot(data_clean, aes(y = Outdoor.air.pollution)) +
-  geom_boxplot(fill = "lightgreen") +
-  labs(title = "Boxplot of Outdoor Air Pollution (After Outlier Removal)", y = "Outdoor Air Pollution") +
-  theme_minimal()
-
-### Final Cleaned Dataset
-After handling missing values and anomalies, we have a clean dataset ready for further analysis.
-
-```{r
-Copy code
 # Display the first few rows of the cleaned dataset
 head(data_clean)
 ```
 
-Provide a brief summary of the cleaning steps and their impact on the dataset.
+## **1.3 Visualisation**
 
-## Visualizations Transformations 
-This section will include various visualizations and analyses to uncover insights from the data.
+### **1.3.1 Single Variable Visualisation**
 
-## Shiny App
+We begin by exploring some key variables from the dataset to understand their distribution and general patterns. 
+
+- **Outdoor Air Pollution**
+
+A histogram shows the distribution of pollution levels, and a boxplot identifies outliers. This variable is critical for understanding environmental factors contributing to health outcomes.
+
+```{r plot-Outdoor.air.pollution}
+# Histogram
+ggplot(data_clean, aes(x = Outdoor.air.pollution)) +
+  geom_histogram(fill = "blue", bins = 30, color = "black") +
+  labs(title = "Distribution of Outdoor Air Pollution",
+       x = "Outdoor Air Pollution Levels",
+       y = "Frequency")
+
+# Boxplot
+ggplot(data_clean, aes(y = Outdoor.air.pollution)) +
+  geom_boxplot(fill = "lightblue") +
+  labs(title = "Boxplot of Outdoor Air Pollution")
+```
+
+**Histogram:** The distribution of outdoor air pollution shows a heavy skew to the right, with most countries having lower levels of air pollution. Only a small number of cases exhibit significantly higher pollution levels.
+
+**Boxplot:** The boxplot shows a significant number of outliers on the higher end. This indicates that while most countries have moderate pollution levels, there are a few extreme cases with very high pollution.
+
+- **High Systolic Blood Pressure**
+
+We visualize the distribution of systolic blood pressure levels to identify typical ranges and extreme values.
+
+```{r plot-High.systolic.blood.pressure}
+# Histogram
+ggplot(data_clean, aes(x = High.systolic.blood.pressure)) +
+  geom_histogram(fill = "orange", bins = 30, color = "black") +
+  labs(title = "Distribution of High Systolic Blood Pressure",
+       x = "High Systolic Blood Pressure",
+       y = "Frequency")
+
+# Boxplot
+ggplot(data_clean, aes(y = High.systolic.blood.pressure)) +
+  geom_boxplot(fill = "lightblue") +
+  labs(title = "Boxplot of High Systolic Blood Pressure")
+```
+
+**Histogram:** This variable also has a right-skewed distribution, where the majority of countries have lower average systolic blood pressure levels. There is a noticeable long tail of higher blood pressure levels.
+
+**Boxplot:** The presence of outliers in the boxplot indicates a small number of countries where the population's systolic blood pressure levels are much higher than the global average.
+
+- **Smoking**
+
+Here, we examine the distribution of smoking rates across countries, focusing on global smoking patterns.
+
+```{r plot-Smoking}
+# Histogram
+ggplot(data_clean, aes(x = Smoking)) +
+  geom_histogram(fill = "purple", bins = 30, color = "black") +
+  labs(title = "Distribution of Smoking Rates",
+       x = "Smoking Rate",
+       y = "Frequency")
+
+# Boxplot
+ggplot(data_clean, aes(y = Smoking)) +
+  geom_boxplot(fill = "lightblue") +
+  labs(title = "Boxplot of Smoking Rates")
+```
+
+**Histogram:** The smoking rates distribution is heavily skewed to the right, with the majority of countries having lower smoking rates. A few countries exhibit significantly higher rates, creating a long tail.
+
+**Boxplot:** Similar to other variables, the boxplot shows several outliers indicating countries with extremely high smoking prevalence compared to the global trend.
+
+- **Diet High in Sodium**
+
+This visualization looks at sodium consumption patterns across countries, which is a major factor contributing to heart disease.
+
+```{r plot-Diet.high.in.sodium}
+# Histogram
+ggplot(data_clean, aes(x = Diet.high.in.sodium)) +
+  geom_histogram(fill = "red", bins = 30, color = "black") +
+  labs(title = "Distribution of Diet High in Sodium",
+       x = "High Sodium Diet",
+       y = "Frequency")
+
+# Boxplot
+ggplot(data_clean, aes(y = Diet.high.in.sodium)) +
+  geom_boxplot(fill = "lightblue") +
+  labs(title = "Boxplot of Diet High in Sodium")
+```
+
+**Histogram:** The distribution for a high-sodium diet shows that most countries have relatively low sodium intake. There are fewer countries with higher sodium consumption.
+
+**Boxplot:** The boxplot also displays outliers, suggesting that some countries consume a notably higher amount of sodium than the average.
+
+### **1.3.2 Multiple Variable Visualisation**
+
+We will explore relationships between different variables to identify any potential correlations, trends, or interesting patterns. A common way to visualize these relationships is by using scatter plots, correlation heatmaps, or pair plots.
+
+- **Outdoor Air Pollution vs. High Systolic Blood Pressure**
+
+This could explore the relationship between environmental pollution and blood pressure levels, which could reflect the impact of pollution on public health.
+
+- **Smoking Rates vs. High Systolic Blood Pressure**
+
+We could examine if there's any visible trend between smoking rates and high blood pressure across different countries.
+
+- **Diet High in Sodium vs. High Systolic Blood Pressure**
+
+This explores the well-known relationship between sodium intake and high blood pressure, looking for trends in the data.
+
+- **Smoking Rates vs. Diet High in Sodium**
+
+Investigating whether countries with high smoking rates also have higher sodium consumption, which might reflect unhealthy lifestyle correlations.
+
+```{r plot-multi-var}
+# Multiple variable visualisation - Scatterplots
+
+# 1. Outdoor Air Pollution vs. High Systolic Blood Pressure
+ggplot(data_clean, aes(x = Outdoor.air.pollution, y = High.systolic.blood.pressure)) +
+  geom_point(color = "blue", alpha = 0.6) +
+  labs(title = "Outdoor Air Pollution vs High Systolic Blood Pressure", 
+       x = "Outdoor Air Pollution", y = "High Systolic Blood Pressure") +
+  theme_minimal()
+
+# 2. Smoking Rates vs. High Systolic Blood Pressure
+ggplot(data_clean, aes(x = Smoking, y = High.systolic.blood.pressure)) +
+  geom_point(color = "purple", alpha = 0.6) +
+  labs(title = "Smoking Rates vs High Systolic Blood Pressure", 
+       x = "Smoking Rates", y = "High Systolic Blood Pressure") +
+  theme_minimal()
+
+# 3. Diet High in Sodium vs. High Systolic Blood Pressure
+ggplot(data_clean, aes(x = Diet.high.in.sodium, y = High.systolic.blood.pressure)) +
+  geom_point(color = "red", alpha = 0.6) +
+  labs(title = "Diet High in Sodium vs High Systolic Blood Pressure", 
+       x = "Diet High in Sodium", y = "High Systolic Blood Pressure") +
+  theme_minimal()
+
+# 4. Smoking Rates vs. Diet High in Sodium
+ggplot(data_clean, aes(x = Smoking, y = Diet.high.in.sodium)) +
+  geom_point(color = "green", alpha = 0.6) +
+  labs(title = "Smoking Rates vs Diet High in Sodium", 
+       x = "Smoking Rates", y = "Diet High in Sodium") +
+  theme_minimal()
+```
+
+```{r plot-corr, fig.width=10, fig.height=10}
+# 5. Correlation heatmap (if multiple variables are being explored at once)
+library(corrplot)
+numeric_vars <- data_clean[, sapply(data_clean, is.numeric)]
+corr_matrix <- cor(numeric_vars, use = "complete.obs")
+corrplot(corr_matrix, method = "color", tl.cex = 0.6, number.cex = 0.7, tl.col = "black", tl.srt = 45)
+```
+
+**Interpretation**:
+
+- **Outdoor Air Pollution vs. High Systolic Blood Pressure**
+
+The scatter plot demonstrates a positive correlation between outdoor air pollution and high systolic blood pressure. As pollution levels increase, so do systolic blood pressure levels. This suggests that environmental factors like air quality may play a role in blood pressure-related health outcomes across different regions.
+
+- **Smoking Rates vs. High Systolic Blood Pressure**
+
+There is also a positive relationship between smoking rates and systolic blood pressure. Higher smoking rates correlate with higher blood pressure levels, reinforcing the well-known link between smoking and cardiovascular health risks.
+
+- **Diet High in Sodium vs. High Systolic Blood Pressure**
+
+This scatter plot highlights a strong positive correlation between high sodium diet and systolic blood pressure. As sodium intake increases, systolic blood pressure also rises significantly. This observation aligns with existing health research that high sodium intake contributes to hypertension.
+
+- **Smoking Rates vs. Diet High in Sodium**
+
+Interestingly, the relationship between smoking rates and sodium intake is less pronounced but still suggests that higher smoking prevalence might coincide with higher sodium consumption. This could point to broader lifestyle or dietary patterns in certain regions.
+
+- **Correlation Heatmap**
+
+The heatmap provides an overview of the correlations between all variables in the dataset. Darker colors represent stronger positive correlations, while lighter colors indicate weaker or negative relationships. Notably, high systolic blood pressure shows strong correlations with several lifestyle factors, including smoking and diet. Similarly, outdoor air pollution also correlates with multiple health outcomes.
+
+### **1.3.3 Time Series Visualisation**
+
+We aim to explore how key health metrics, such as outdoor air pollution, smoking rates, and high systolic blood pressure, have changed over time. Time series visualizations will allow us to identify trends, fluctuations, and patterns across different years.
+
+- **Time Series of Outdoor Air Pollution Over the Years**
+
+```{r plot-time-Outdoor.air.pollution}
+ggplot(data_clean, aes(x = Year, y = Outdoor.air.pollution, color = Entity)) +
+  geom_line(linewidth = 1, alpha = 0.7) +   
+  theme_minimal() +
+  labs(title = "Outdoor Air Pollution Over Time",
+       x = "Year",
+       y = "Outdoor Air Pollution Levels") +
+  theme(legend.position = "none")
+```
+
+The time series plot for Outdoor Air Pollution shows varied trends among different countries. Some countries experienced a notable increase in outdoor air pollution over time, especially after 2000, while others remained relatively stable or even declined slightly. The visual differences across countries highlight the diverse environmental situations worldwide. This trend could suggest that some nations are more susceptible to rising air pollution due to factors like industrialization or lack of pollution control measures.
+
+- **Time Series of High Systolic Blood Pressure Over the Years**
+
+```{r plot-time-High.systolic.blood.pressure}
+# Time Series for High Systolic Blood Pressure
+ggplot(data_clean, aes(x = Year, y = High.systolic.blood.pressure, color = Entity)) +
+  geom_line(size = 1, alpha = 0.7) +
+  theme_minimal() +
+  labs(title = "High Systolic Blood Pressure Over Time",
+       x = "Year",
+       y = "High Systolic Blood Pressure Levels") +
+  theme(legend.position = "none")
+```
+
+For High Systolic Blood Pressure, the time series visualization reveals that, while most countries exhibit a consistent increase in blood pressure levels, there are fluctuations for certain countries. This increasing trend aligns with global health concerns regarding lifestyle-related diseases such as hypertension, which could be influenced by factors such as diet and physical inactivity. A few countries also show relatively higher levels of systolic blood pressure throughout the observed years.
+
+- **Time Series of Smoking Rates Over the Years**
+
+```{r plot-time-Smoking}
+# Time Series for Smoking Rates
+ggplot(data_clean, aes(x = Year, y = Smoking, color = Entity)) +
+  geom_line(size = 1, alpha = 0.7) +
+  theme_minimal() +
+  labs(title = "Smoking Rates Over Time",
+       x = "Year",
+       y = "Smoking Rates") +
+  theme(legend.position = "none")
+```
+
+The Smoking Rates Over Time plot shows a range of trends, with some countries witnessing steady increases in smoking rates, while others experience fluctuations or even a decline over time. The wide variation in smoking behaviors across countries could be due to factors such as public health initiatives, taxation on tobacco, or cultural practices. Despite some regions reducing smoking rates, many countries still show significantly high levels, which can have a direct impact on health-related issues, including high blood pressure and cardiovascular diseases.
+
+
 
 # Section 2: Predictive Modeling
 This section will involve building and evaluating classification models.
