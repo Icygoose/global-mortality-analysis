@@ -7,6 +7,23 @@ output: html_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, warning = FALSE, message = FALSE)
+
+# Load necessary libraries
+library(ggplot2)      # For data visualization
+library(dplyr)        # For data manipulation
+library(tidyverse)
+library(tidyr)        # For tidying data
+library(knitr)        # For creating tables in the report
+library(factoextra)   # For visualizing clustering results and determining optimal clusters
+library(cluster)      # For clustering algorithms like K-means
+library(corrplot)     # For visualizing correlation matrices
+library(caret)        # For splitting the data and evaluating models
+library(pROC)         # For ROC curve and AUC calculation
+library(car)          # For calculating Variance Inflation Factor (VIF)
+library(lime)         # For model interpretation with LIME
+library(rpart)
+library(rpart.plot)
+library(scales)
 ```
 
 # **Introduction**
@@ -20,13 +37,6 @@ The objective of this project is to perform exploratory data analysis (EDA) and 
 ### **1.1.1. Loading the Dataset**
 
 ```{r load-data, cache=TRUE}
-
-# Load necessary libraries
-library(ggplot2)
-library(dplyr)
-library(tidyr)
-library(knitr)
-
 # Read the dataset 
 data <- read.csv("Countries_and_Death_Causes.csv", stringsAsFactors = FALSE)
 
@@ -56,7 +66,7 @@ Summary statistics highlight significant variability in key health indicators:
 - **Outdoor Air Pollution:** Ranges widely from 0 to over 4.5 million, indicating diverse environmental conditions.
 - **High Systolic Blood Pressure:** Values vary from 2 to over 10 million, reflecting differing health profiles.
 - **Dietary Factors:** Median sodium intake is 969.5, with substantial values in whole grains and fruits consumption.
-- **Lifestyle Indicators:** Moderate alcohol use (median ~1,780) and significant smoking rates (median ~4,987) suggest prevalent lifestyle risks.
+- **Lifestyle Indicators:** Moderate alochol use (median ~1,780) and significant smoking rates (median ~4,987) suggest prevalent lifestyle risks.
 - **Child Health Metrics:** Median values for child wasting and stunting indicate ongoing nutritional challenges.
 
 ## **1.2. Data Cleaning**
@@ -306,13 +316,12 @@ ggplot(data_clean, aes(x = Smoking, y = Diet.high.in.sodium)) +
 
 ```{r plot-corr, fig.width=10, fig.height=10, cache=TRUE}
 # 5. Correlation heatmap (if multiple variables are being explored at once)
-library(corrplot)
 numeric_vars <- data_clean[, sapply(data_clean, is.numeric)]
 corr_matrix <- cor(numeric_vars, use = "complete.obs")
 corrplot(corr_matrix, method = "color", tl.cex = 0.6, number.cex = 0.7, tl.col = "black", tl.srt = 45)
 ```
 
-**Interpretation**:
+**Interpretation of Results**:
 
 - **Outdoor Air Pollution vs. High Systolic Blood Pressure**
 
@@ -394,13 +403,11 @@ For this project, we aim to predict the **death rate** (high/low) for each count
 
 We focus on creating a suitable response variable for the classification task. Given that the provided dataset (`Countries_and_Death_Causes`) does not directly contain death rates, we utilize additional data from the World Bank, specifically **total population** and **GDP per capita**. We aim to create a binary classification problem where countries are categorized based on mortality rates.
 
-**Merging Datasets**:
+**a. Merging Datasets**:
 
 We merge the `Countries_and_Death_Causes` dataset with the World Bank datasets, `data_population` (total population) and `data_GDP_per_Capita` (GDP per capita), by aligning the **country codes** and **years** in each dataset. This merged dataset will allow us to analyze health factors in relation to population size and economic conditions.
 
 ```{r merge-data, cache=TRUE}
-library(tidyverse)
-
 # Load Population and GDP per Capita Data
 population_df <- read_csv("Population_Data.csv")
 gdp_df <- read_csv("GDP_per_Capita_Data.csv")
@@ -483,15 +490,12 @@ albania_1990 <- merged_df %>%
 
 print(albania_1990)
 
-# Save merged dataset to CSV
-write_csv(merged_df, "merged_dataset.csv")
-
 # Confirmation message
-print("Datasets merged and saved successfully!")
+print("Datasets merged successfully!")
 
 ```
 
-**Mortality Proxy Calculation**:
+**b. Mortality Proxy Calculation**:
 
 To predict the death rate for each country, we construct a **Mortality Proxy** that aggregates various health-related and environmental risk factors. This proxy serves as an estimated measure of mortality risk, combining multiple indicators into a single, comprehensive metric. By normalizing the sum of these factors by the country's total population, we ensure that the proxy accounts for population size, facilitating meaningful comparisons across countries.
 
@@ -554,7 +558,7 @@ merged_df <- merged_df %>%
 head(merged_df %>% select(Code, Year, Mortality_Proxy))
 ```
 
-**Defining Binary Classes**:
+**c. Defining Binary Classes**:
 
 With the Mortality Proxy calculated, we categorize each country-year observation into two classes: **High Mortality Rate** and **Low Mortality Rate**. This binary classification simplifies the predictive modeling process.
 
@@ -596,68 +600,265 @@ ggplot(merged_df, aes(x = Mortality_Class, fill = Mortality_Class)) +
 
 ### **2.2.2. Feature Variables**
 
-We select and prepare the relevant feature variables that will be used to predict the mortality classes. Proper feature selection is crucial as it enhances model performance, reduces complexity, and mitigates the risk of overfitting.
+We select and prepare relevant feature variables to predict the mortality classes. Proper feature selection enhances model performance, reduces complexity, and mitigates the risk of overfitting. We'll perform univariate analyses to assess each variable's predictive power and check for multicollinearity to remove highly correlated variables.
 
-We focus on health-related and socioeconomic variables that are likely to influence mortality rates. Columns with unique values for each observation or those that are categorical without meaningful encoding are excluded to maintain the integrity of the classification models.
+**a. Initial Feature Selection**:
 
-```{r feature-var, cache=TRUE}
-# Load necessary libraries
-library(caret)
+We begin by selecting health-related and socioeconomic variables likely to influence mortality rates. Unique identifiers and non-numeric variables are excluded to maintain the integrity of the models.
 
-# Define the list of health-related variables already used in the Mortality Proxy
+```{r feature-select, cache=TRUE}
+# Define the list of health-related variables
 health_vars <- c(
   "Outdoor.air.pollution",
   "High.systolic.blood.pressure",
   "Diet.high.in.sodium",
-  "Alochol.use",
-  "Diet.low.in.whole.grains",
-  "Diet.low.in.fruits",
-  "Unsafe.water.source",
-  "Secondhand.smoke",
-  "Low.birth.weight",
-  "Child.wasting",
-  "Unsafe.sex",
-  "Diet.low.in.nuts.and.seeds",
-  "Household.air.pollution.from.solid.fuels",
-  "Diet.low.in.Vegetables",
-  "Low.physical.activity",
   "Smoking",
   "High.fasting.plasma.glucose",
-  "Air.pollution",
   "High.body.mass.index",
-  "Unsafe.sanitation",
-  "No.access.to.handwashing.facility",
-  "Drug.use",
-  "Low.bone.mineral.density",
-  "Vitamin.A.deficiency",
-  "Child.stunting",
-  "Discontinued.breastfeeding",
-  "Non.exclusive.breastfeeding",
-  "Iron.deficiency"
+  "Low.physical.activity",
+  "Alochol.use",
+  "Diet.low.in.fruits",
+  "Diet.low.in.whole.grains"
 )
 
-# Select relevant features for modeling
-# Exclude unique identifier columns and any remaining categorical/string variables
-# Assuming 'Entity', 'Country Name.x', 'Country Name.y' are non-informative identifiers
-feature_vars <- c(
-  health_vars,
+# Socioeconomic variables
+socioeconomic_vars <- c(
   "Population",
   "GDP_per_Capita"
 )
 
-# Create the final dataset for modeling by selecting the necessary columns
+# Combine all feature variables
+feature_vars <- c(health_vars, socioeconomic_vars)
+
+# Create the initial dataset for modeling by selecting the necessary columns
 model_df <- merged_df %>%
   select(all_of(feature_vars), Mortality_Class)
 
-# Verify that there are no missing values in the selected features
+# Ensure Mortality_Class is a factor with correct levels
+model_df$Mortality_Class <- factor(model_df$Mortality_Class, levels = c("Low Mortality Rate", "High Mortality Rate"))
+
+# Remove any rows with missing values
+model_df <- model_df %>% drop_na()
+
+# Inspect the first few rows of the prepared dataset
+head(model_df)
+```
+
+**b. Univariate Analysis**:
+
+We perform univariate logistic regression for each predictor to assess its individual predictive power.
+
+```{r univariate-regression, cache=TRUE}
+# Initialize a dataframe to store AUC values
+univariate_results <- data.frame(Predictor = character(), AUC = numeric(), stringsAsFactors = FALSE)
+
+# List of predictor variables
+predictors <- names(model_df)[names(model_df) != "Mortality_Class"]
+
+# Loop through each predictor
+for (pred in predictors) {
+  formula <- as.formula(paste("Mortality_Class ~", pred))
+  model <- glm(formula, data = model_df, family = binomial)
+  prob <- predict(model, type = "response")
+  roc_curve <- roc(model_df$Mortality_Class, prob, levels = c("Low Mortality Rate", "High Mortality Rate"))
+  auc_value <- as.numeric(auc(roc_curve))
+  univariate_results <- rbind(univariate_results, data.frame(Predictor = pred, AUC = auc_value))
+}
+
+# Sort predictors by AUC
+univariate_results <- univariate_results[order(-univariate_results$AUC), ]
+print(univariate_results)
+```
+
+**Interpretation of Results:**
+
+**GDP_per_Capita** has the highest AUC (0.7770), indicating it has the best individual predictive power among the variables tested. **Diet.low.in.fruits** and **Alochol.use** have moderate AUC values (around 0.66–0.67), suggesting some predictive ability. The remaining variables have lower AUC values (below 0.65), indicating limited individual predictive power.
+
+Based on the univariate analysis, we'll use the following variables for the multivariate models:
+
+- **GDP_per_Capita**
+- **Diet.low.in.fruits**
+- **Alochol.use**
+- **Diet.high.in.sodium**
+- **High.systolic.blood.pressure**
+- **Smoking**
+
+**c. Checking for Multicollinearity**:
+
+We will check for multicollinearity among the selected predictors to identify any highly correlated variables that could negatively affect our models.
+
+**Correlation Matrix Analysis**
+
+We calculated the correlation matrix for the selected variables:
+
+- **GDP_per_Capita**
+- **Diet.low.in.fruits**
+- **Alochol.use**
+- **Diet.high.in.sodium**
+- **High.systolic.blood.pressure**
+- **Smoking**
+
+```{r corr-matrix, cache=TRUE}
+# Subset the data to include only the selected predictors
+selected_vars <- c(
+  "GDP_per_Capita",
+  "Diet.low.in.fruits",
+  "Alochol.use",
+  "Diet.high.in.sodium",
+  "High.systolic.blood.pressure",
+  "Smoking"
+)
+
+# Create a new dataframe with selected predictors
+model_df_selected <- model_df %>% select(all_of(selected_vars), Mortality_Class)
+
+# Calculate the correlation matrix
+numeric_vars <- model_df_selected %>% select(-Mortality_Class)
+corr_matrix <- cor(numeric_vars, use = "complete.obs")
+
+# Display the correlation matrix
+print(corr_matrix)
+
+# Plot the correlation matrix
+corrplot(corr_matrix, method = "color", addCoef.col = "black", number.cex = 0.7,
+         tl.cex = 0.8, tl.col = "black", title = "Correlation Matrix of Selected Predictors",
+         mar = c(0, 0, 1, 0))
+
+```
+
+Table: Correlation Matrix of Selected Predictors
+
+| Predictor                        | GDP_per_Capita | Diet.low.in.fruits | Alochol.use | Diet.high.in.sodium | High.systolic.blood.pressure | Smoking |
+| -------------------------------- | -------------- | ------------------ | ----------- | ------------------- | ---------------------------- | ------- |
+| **GDP_per_Capita**               | 1.00           | -0.21              | -0.16       | -0.19               | -0.13                        | -0.02   |
+| **Diet.low.in.fruits**           | -0.21          | 1.00               | 0.56        | 0.71                | 0.85                         | 0.72    |
+| **Alochol.use**                  | -0.16          | 0.56               | 1.00        | 0.64                | 0.69                         | 0.58    |
+| **Diet.high.in.sodium**          | -0.19          | 0.71               | 0.64        | 1.00                | 0.78                         | 0.72    |
+| **High.systolic.blood.pressure** | -0.13          | 0.85               | 0.69        | 0.78                | 1.00                         | 0.88    |
+| **Smoking**                      | -0.02          | 0.72               | 0.58        | 0.72                | 0.88                         | 1.00    |
+
+**Interpretation of Results:**
+
+High.systolic.blood.pressure is highly correlated with:
+
+  - **Smoking** (0.88)
+  - **Diet.low.in.fruits** (0.85)
+  - **Diet.high.in.sodium** (0.78)
+
+Smoking is also highly correlated with:
+
+  - **Diet.low.in.fruits** (0.72)
+  - **Diet.high.in.sodium** (0.72)
+
+Due to high multicollinearity, we decided to remove **High.systolic.blood.pressure** and **Smoking** from the predictor set. We retained **Diet.low.in.fruits**, **Alochol.use**, and **Diet.high.in.sodium** as they have acceptable correlations after variable removal.
+
+The final set of predictors is:
+
+- **GDP_per_Capita**
+- **Diet.low.in.fruits**
+- **Alochol.use**
+- **Diet.high.in.sodium**
+
+After removing the highly correlated variables, we recalculated the correlation matrix to confirm that multicollinearity concerns were addressed.
+
+```{r re-corr-matrix, cache=TRUE}
+# Final list of predictors
+final_vars <- c(
+  "GDP_per_Capita",
+  "Diet.low.in.fruits",
+  "Alochol.use",
+  "Diet.high.in.sodium"
+)
+
+# Create the final modeling dataset
+model_df_final <- model_df %>% select(all_of(final_vars), Mortality_Class)
+
+# Calculate the correlation matrix
+numeric_vars_final <- model_df_final %>% select(-Mortality_Class)
+corr_matrix_final <- cor(numeric_vars_final, use = "complete.obs")
+
+# Display the correlation matrix
+print(corr_matrix_final)
+```
+
+**Table: Updated Correlation Matrix**
+
+| Predictor               | GDP_per_Capita | Diet.low.in.fruits | Alochol.use | Diet.high.in.sodium |
+| ----------------------- | -------------- | ------------------ | ----------- | ------------------- |
+| **GDP_per_Capita**      | 1.00           | -0.21              | -0.16       | -0.19               |
+| **Diet.low.in.fruits**  | -0.21          | 1.00               | 0.56        | 0.71                |
+| **Alochol.use**         | -0.16          | 0.56               | 1.00        | 0.64                |
+| **Diet.high.in.sodium** | -0.19          | 0.71               | 0.64        | 1.00                |
+
+**Interpretation of Results:**
+
+The highest correlation is between **Diet.low.in.fruits** and **Diet.high.in.sodium** (0.71), which is below the threshold of 0.8. Other correlations are moderate to low, indicating that multicollinearity is not a significant concern with these variables.
+
+**Variance Inflation Factor (VIF) Analysis**
+
+We calculated the VIF values for the updated predictors to further assess multicollinearity.
+
+```{r vif, cache=TRUE}
+# Fit a logistic regression model with the final predictors
+vif_model_final <- glm(Mortality_Class ~ ., data = model_df_final, family = binomial)
+
+# Calculate VIF values
+vif_values_final <- vif(vif_model_final)
+print(vif_values_final)
+```
+
+**Table: VIF Values of Final Predictors**
+
+| Predictor           | VIF  |
+| ------------------- | ---- |
+| GDP_per_Capita      | 1.05 |
+| Diet.low.in.fruits  | 2.01 |
+| Alochol.use         | 1.64 |
+| Diet.high.in.sodium | 2.30 |
+
+**Interpretation of Results:**
+
+All VIF values are below 5, suggesting that multicollinearity is within acceptable limits. This confirms that our final set of predictors is suitable for modeling without multicollinearity issues.
+
+By analyzing the correlation matrix and VIF values, we refined our predictor set to include variables that contribute uniquely to the model:
+
+- **GDP_per_Capita**
+- **Diet.low.in.fruits**
+- **Alochol.use**
+- **Diet.high.in.sodium**
+
+This refined set of predictors enhances the reliability and interpretability of our models, allowing us to proceed confidently to the modeling phase.
+
+**d. Final Feature Variables**:
+
+Based on the univariate analysis and multicollinearity checks, we refined our feature variables to enhance model performance and interpretability:
+
+- **GDP_per_Capita**
+- **Diet.low.in.fruits**
+- **Alochol.use**
+- **Diet.high.in.sodium**
+
+```{r update-dataset, cache=TRUE}
+# Final list of predictors including the response variable
+final_vars <- c(
+  "GDP_per_Capita",
+  "Diet.low.in.fruits",
+  "Alochol.use",
+  "Diet.high.in.sodium",
+  "Mortality_Class"  # This is our response variable
+)
+
+# Update the modeling dataset
+model_df <- model_df %>% select(all_of(final_vars))
+
+# Ensure Mortality_Class is a factor with correct levels
+model_df$Mortality_Class <- factor(model_df$Mortality_Class, levels = c("Low Mortality Rate", "High Mortality Rate"))
+
+# Verify that there are no missing values
 sum(is.na(model_df))  # Should be 0 if data is clean
 
-# Optional: Remove any rows with missing values if not already handled
-model_df <- model_df %>%
-  drop_na()
-
-# Inspect the first few rows of the prepared feature dataset
-head(model_df)
+# Inspect the structure of the final dataset
+str(model_df)
 ```
 
 ## **2.3. Null Model**
@@ -689,8 +890,8 @@ print(paste("Null Model Accuracy:", round(null_accuracy * 100, 2), "%"))
 
 # Generate a Confusion Matrix for the Null Model
 confusion_null <- confusionMatrix(
-  factor(null_predictions, levels = levels(factor(model_df$Mortality_Class))),
-  factor(model_df$Mortality_Class)
+  factor(null_predictions, levels = levels(model_df$Mortality_Class)),
+  model_df$Mortality_Class
 )
 
 print(confusion_null)
@@ -778,12 +979,7 @@ These models are selected for their interpretability and effectiveness in binary
 
 Decision Trees are intuitive models that split the data based on feature values to create decision rules leading to the target class. They are easy to visualize and interpret, making them suitable for understanding the factors influencing mortality rates.
 
-```{r classifier-decision-tree, cache=TRUE}
-# Load necessary libraries
-library(rpart)
-library(rpart.plot)
-library(pROC)
-
+```{r classifier-decision-tree, fig.width=10, fig.height=10, cache=TRUE}
 # Ensure that Mortality_Class is a factor in both train and test datasets
 train_data$Mortality_Class <- factor(train_data$Mortality_Class, levels = c("Low Mortality Rate", "High Mortality Rate"))
 test_data$Mortality_Class <- factor(test_data$Mortality_Class, levels = c("Low Mortality Rate", "High Mortality Rate"))
@@ -793,11 +989,11 @@ tree_model <- rpart(
   Mortality_Class ~ ., 
   data = train_data, 
   method = "class",
-  control = rpart.control(cp = 0.03)  # cp is the complexity parameter
+  control = rpart.control(cp = 0.01)  # cp is the complexity parameter
 )
 
 # Visualize the Decision Tree
-rpart.plot(tree_model, type = 2, extra = 104, fallen.leaves = TRUE, main = "Decision Tree for Mortality Classification", cex = 0.6)
+rpart.plot(tree_model, type = 2, extra = 104, fallen.leaves = TRUE, main = "Decision Tree for Mortality Classification", cex = 0.3)
 
 # Predict on the testing set
 tree_predictions <- predict(tree_model, newdata = test_data, type = "class")
@@ -822,15 +1018,438 @@ abline(a=0, b=1, lty=2, col="gray")
 # Display AUC
 auc_tree <- auc(roc_tree)
 print(paste("Decision Tree AUC:", round(auc_tree, 4)))
+```
+
+**Interpretation of Results:**
+
+- **Accuracy:** The decision tree model achieved an accuracy of **85.05%**, correctly predicting the mortality class for a significant portion of the test set.
+- **Sensitivity (Recall for Low Mortality Rate):** The model accurately identified **90.65%** of the countries with a low mortality rate, demonstrating strong ability in detecting the majority class.
+- **Specificity (Recall for High Mortality Rate):** It correctly identified **68.25%** of the countries with a high mortality rate, which is a considerable improvement over random guessing.
+- **Positive Predictive Value (Precision for Low Mortality Rate):** When the model predicted a low mortality rate, it was correct **89.55%** of the time.
+- **Negative Predictive Value (Precision for High Mortality Rate):** When predicting a high mortality rate, the model was correct **70.88%** of the time.
+- **Kappa Statistic:** A value of **0.5964** indicates a moderate to substantial agreement between the predicted and actual classes beyond chance.
+- **Area Under the ROC Curve (AUC):** An AUC of **0.8479** suggests the model has excellent ability to distinguish between high and low mortality rate classes.
+
+**Confusion Matrix Insights:**
+
+- **True Positives (Low Mortality Rate correctly identified):** **514** countries.
+- **True Negatives (High Mortality Rate correctly identified):** **129** countries.
+- **False Positives (High Mortality Rate incorrectly predicted as Low):** **60** countries.
+- **False Negatives (Low Mortality Rate incorrectly predicted as High):** **53** countries.
+
+**Overall Assessment:**
+
+The decision tree model performs well in classifying countries into low and high mortality rate categories. It shows a strong balance between sensitivity and specificity, and the high AUC value indicates reliable discriminative power. The model's performance is significantly better than the null model, highlighting its effectiveness.
+
+### **2.5.2. Logistic Regression Classifier**
+
+Logistic Regression is a probabilistic model suitable for binary classification tasks. It estimates the probability that a given input point belongs to a particular class, making it effective for understanding the relationship between features and the target variable.
+
+```{r classifier-logistic-regression, cache=TRUE}
+# Ensure Mortality_Class is a factor with correct levels
+train_data$Mortality_Class <- factor(train_data$Mortality_Class, levels = c("Low Mortality Rate", "High Mortality Rate"))
+test_data$Mortality_Class <- factor(test_data$Mortality_Class, levels = c("Low Mortality Rate", "High Mortality Rate"))
+
+# Train the Logistic Regression model
+logistic_model <- glm(
+  Mortality_Class ~ ., 
+  data = train_data, 
+  family = binomial
+)
+
+# Predict probabilities on the testing set
+logistic_prob <- predict(logistic_model, newdata = test_data, type = "response")
+
+# Convert probabilities to class labels using 0.5 as threshold
+logistic_predictions <- ifelse(logistic_prob >= 0.5, "High Mortality Rate", "Low Mortality Rate")
+logistic_predictions <- factor(logistic_predictions, levels = levels(test_data$Mortality_Class))
+
+# Generate Confusion Matrix
+confusion_logistic <- confusionMatrix(logistic_predictions, test_data$Mortality_Class)
+print(confusion_logistic)
+
+# Calculate ROC and AUC
+roc_logistic <- roc(response = test_data$Mortality_Class, predictor = logistic_prob, levels = c("Low Mortality Rate", "High Mortality Rate"))
+
+# Plot ROC Curve
+plot(roc_logistic, col = "red", main = "ROC Curve - Logistic Regression")
+abline(a=0, b=1, lty=2, col="gray")
+
+# Display AUC
+auc_logistic <- auc(roc_logistic)
+print(paste("Logistic Regression AUC:", round(auc_logistic, 4)))
+```
+
+**Interpretation of Results:**
+
+- **Accuracy:** The logistic regression model achieved an accuracy of **72.22%**, which is slightly lower than the decision tree model and close to the no-information rate (the proportion of the majority class, 75%).
+- **Sensitivity (Recall for Low Mortality Rate):** The model correctly identified **95.06%** of the countries with a low mortality rate, indicating a high ability to detect the majority class.
+- **Specificity (Recall for High Mortality Rate):** It only correctly identified **3.70%** of the countries with a high mortality rate, showing poor performance in detecting the minority class.
+- **Positive Predictive Value (Precision for Low Mortality Rate):** When the model predicted a low mortality rate, it was correct **74.76%** of the time.
+- **Negative Predictive Value (Precision for High Mortality Rate):** When predicting a high mortality rate, the model was correct **20.00%** of the time.
+- **Kappa Statistic:** A value of **-0.0169** suggests no agreement between the predicted and actual classes beyond chance, indicating poor model performance.
+- **Area Under the ROC Curve (AUC):** An AUC of **0.7063** indicates acceptable but not strong ability to distinguish between the classes.
+
+**Confusion Matrix Insights:**
+
+- **True Positives (Low Mortality Rate correctly identified):** **539** countries.
+- **True Negatives (High Mortality Rate correctly identified):** **7** countries.
+- **False Positives (High Mortality Rate incorrectly predicted as Low):** **182** countries.
+- **False Negatives (Low Mortality Rate incorrectly predicted as High):** **28** countries.
+
+**Overall Assessment:**
+
+The logistic regression model demonstrates a high sensitivity for detecting countries with a low mortality rate but struggles to accurately identify countries with a high mortality rate, as evidenced by the low specificity and negative predictive value. The negative Kappa statistic suggests that the model's predictions are not better than random chance when accounting for class imbalance. The modest AUC value indicates that the model's ability to discriminate between the two classes is acceptable but not strong.
+
+## **2.6. Model Evaluation**
+
+We compare the performance of the Decision Tree and Logistic Regression classifiers using the refined feature set derived from our earlier analyses. We evaluate each model based on key metrics such as accuracy, sensitivity, specificity, Kappa statistic, and the Area Under the Receiver Operating Characteristic Curve (AUC). We also discuss how feature selection impacted the models.
+
+**Decision Tree Classifier Performance:**
+
+The Decision Tree model achieved an accuracy of **85.05%**, correctly classifying a significant portion of the test data. It demonstrated a high sensitivity of **90.65%** for the 'Low Mortality Rate' class, indicating strong ability to identify countries with low mortality rates. The specificity was **68.25%** for the 'High Mortality Rate' class, showing effective recognition of countries with high mortality rates. The Kappa statistic of **0.5964** suggests moderate to substantial agreement between the predicted and actual classes beyond chance. An AUC of **0.8479** indicates excellent discriminative ability in distinguishing between the two mortality classes.
+
+**Logistic Regression Classifier Performance:**
+
+The Logistic Regression model obtained an accuracy of **72.22%**, which is lower than the Decision Tree and close to the baseline accuracy of predicting the majority class. It showed high sensitivity of **95.06%** for the 'Low Mortality Rate' class but very low specificity of **3.70%** for the 'High Mortality Rate' class, reflecting difficulty in detecting the minority class. The negative Kappa statistic of **-0.0169** suggests no better agreement than random chance. The AUC was **0.7063**, indicating acceptable but limited discriminative ability.
+
+**Comparison and Discussion:**
+
+The Decision Tree classifier outperforms the Logistic Regression classifier across most evaluation metrics. Its higher specificity and balanced sensitivity make it better suited for handling the class imbalance in our dataset. The Logistic Regression model's tendency to predict the majority class highlights its limitations in this context, as evidenced by its low specificity and negative Kappa statistic.
+
+**Impact of Feature Selection:**
+
+Our feature selection process—focusing on univariate analysis and multicollinearity checks—resulted in a refined set of predictors: **GDP_per_Capita**, **Diet.low.in.fruits**, **Alochol.use**, and **Diet.high.in.sodium**. This careful selection enhanced the Decision Tree model's performance by ensuring that only variables with strong predictive power and minimal redundancy were included. The Logistic Regression model, however, did not achieve comparable performance with these features, suggesting that it may be less suitable for this classification task under the current conditions.
+
+**Overall Assessment:**
+
+Based on the evaluation metrics and comparative analysis, the Decision Tree classifier demonstrates superior performance in classifying countries by mortality rate using the selected features. Its ability to balance sensitivity and specificity, along with a higher AUC, underscores its suitability for this task. The Logistic Regression classifier, while showing high sensitivity for the 'Low Mortality Rate' class, had limitations in detecting the 'High Mortality Rate' class. This suggests that, in this context, the Decision Tree model is more effective for our classification objectives using the selected features.
+
+## **2.7. Using LIME for Model Interpretation**
+
+We apply the Local Interpretable Model-agnostic Explanations (LIME) technique to interpret the predictions made by our Decision Tree classifier. LIME helps us understand the contribution of each feature to a particular prediction, offering insights into the model's decision-making process for individual instances.
+
+```{r lime, cache=TRUE}
+# Define 'model_type' and 'predict_model' methods for 'rpart' models
+model_type.rpart <- function(x, ...) {
+  if (x$method == "class") "classification" else "regression"
+}
+
+predict_model.rpart <- function(x, newdata, type, ...) {
+  if (type == "raw") {
+    preds <- predict(x, newdata, type = "class")
+    data.frame(Response = preds)
+  } else if (type == "prob") {
+    preds <- predict(x, newdata, type = "prob")
+    as.data.frame(preds)
+  } else {
+    stop("Invalid prediction type")
+  }
+}
+
+# Create the explainer using the training data
+explainer <- lime(
+  x = train_data[, -which(names(train_data) == "Mortality_Class")],
+  model = tree_model,
+  bin_continuous = TRUE
+)
+
+# Select a few instances from the test set for explanation
+set.seed(123)
+instances_to_explain <- test_data[sample(1:nrow(test_data), 3), ]
+
+# Generate explanations using LIME
+explanation <- explain(
+  x = instances_to_explain[, -which(names(instances_to_explain) == "Mortality_Class")],
+  explainer = explainer,
+  n_features = 4,
+  n_labels = 1
+)
+
+# Visualize the explanations
+plot_features(explanation) +
+  labs(title = "LIME Explanations for Decision Tree Predictions")
+```
+
+**Interpretation of Results:**
+
+For each instance, LIME provided the predicted label, prediction probability, explanation fit, and the key features influencing the prediction. Below is a summary of the findings for the three instances:
+
+**Instance 1 (Case 2082)**
+
+The model predicted a **Low Mortality Rate** with a probability of **97%**. The features that most strongly supported this prediction were low levels of **Vitamin A deficiency**, **unsafe sex**, and **smoking**. These factors are associated with better health outcomes and lower mortality risks. However, the population size, which fell between 414,508 and 2,650,930, contradicted the prediction to some extent, possibly indicating that certain risks are associated with moderate population sizes in the model's assessment.
+
+**Instance 2 (Case 2328)**
+
+For this instance, the model predicted a **Low Mortality Rate** with a probability of **99%**. The prediction was supported by moderate levels of **unsafe sex** and low **Vitamin A deficiency**, indicating relatively good health practices and nutrition. On the other hand, a diet low in nuts and seeds, and a population size in the same moderate range as before, contradicted the prediction, suggesting these factors might increase mortality risk.
+
+**Instance 3 (Case 897)**
+
+The model again predicted a **Low Mortality Rate**, with a probability of **97%**. Supporting features included very low **Vitamin A deficiency** and low levels of **unsafe sex**, both indicative of favorable health conditions. Contradicting the prediction were low **bone mineral density** and a smaller population size (less than 414,508), which the model may associate with increased mortality risks due to factors like limited healthcare resources.
+
+**Discussion**
+
+Across all three instances, low levels of **Vitamin A deficiency** and **unsafe sex** consistently supported the predictions of a low mortality rate. These findings align with established knowledge that adequate nutrition and safe sexual practices contribute to better health outcomes. The contradictions posed by factors such as **population size**, **diet low in nuts and seeds**, and **low bone mineral density** highlight areas where the model identifies potential risks. However, the positive influences outweighed the negatives in these cases, leading to high-confidence predictions of low mortality rates.
+
+**Overall Assessment**
+
+The LIME analysis provided valuable insights into how the Decision Tree classifier makes predictions. It confirmed that the model relies on meaningful health indicators that are logically associated with mortality rates. This interpretability enhances our confidence in the model's reliability and its applicability for understanding facto
+rs affecting mortality in different countries.
+
+# **Section 3: Clustering**
+This section will involve performing clustering analysis to discover patterns in the data.
+
+## **3.1. Selecting Feature Variables for Clustering**
+
+To begin, we need to choose a set of feature variables for the clustering analysis. We will use the same refined set of predictors from the classification task to maintain consistency and leverage the features we've already identified as significant:
+
+- **GDP_per_Capita**
+- **Diet.low.in.fruits**
+- **Alochol.use**
+- **Diet.high.in.sodium**
+
+These variables capture economic and dietary factors that are likely to influence mortality rates and may reveal interesting clusters among countries.
+
+```{r}
+# Prepare the data for clustering
+clustering_df <- model_df %>% select(-Mortality_Class)
+```
+
+## **3.2. Data Preprocessing for Clustering**
+
+Before applying clustering algorithms, it is essential to preprocess the data to ensure that all features contribute equally to the analysis. Clustering algorithms are sensitive to the scale of variables; hence, standardizing the data is a crucial step.
+
+**Standardize the Variables:** Standardization transforms the data to have a mean of zero and a standard deviation of one. This process ensures that each feature has equal weight in the clustering process, preventing features with larger scales from dominating the distance calculations.
+
+```{r cluster-scale, cache=TRUE}
+# Standardize the data
+clustering_data <- scale(clustering_df)
+```
+
+After standardization, each feature has been transformed to have a mean of zero and a standard deviation of one. This ensures that all features contribute equally to the clustering process, preventing variables with larger scales from dominating the distance calculations.
+
+## **3.3. Choosing a Distance Measure**
+
+For our clustering analysis, we selected **Euclidean distance** as the distance metric. Euclidean distance is well-suited for continuous numerical data and aligns seamlessly with the K-means clustering algorithm. By measuring the straight-line distance between data points in the feature space, Euclidean distance provides an intuitive and straightforward assessment of similarity.
+
+**Reasoning:**
+
+- **Interpretability:** Euclidean distance offers a clear and easily understandable metric for evaluating how similar or dissimilar two countries are based on their economic and dietary features.
+- **Compatibility with K-means:** K-means clustering aims to minimize the within-cluster sum of squares, which directly corresponds to the use of Euclidean distance. This ensures that the algorithm efficiently groups countries with similar standardized feature values into distinct clusters.
+
+## **3.4. Determining the Optimal Number of Clusters (k)**
+
+Selecting the appropriate number of clusters is crucial. We employ the following methods to determine the optimal k:
+
+- **Elbow Method**
+- **Silhouette Analysis**
+- **Gap Statistic**
+
+### **3.4.1. Elbow Method**
+
+Selecting the optimal number of clusters (**k**) is essential for effective clustering analysis. The **Elbow Method** assists in determining the appropriate **k** by evaluating the total within-cluster sum of squares (WSS) for different values of **k** and identifying the point where the rate of decrease sharply changes, resembling an "elbow."
+
+```{r cluster-elbow, cache=TRUE}
+# Elbow method
+fviz_nbclust(clustering_data, kmeans, method = "wss") +
+  labs(title = "Elbow Method for Determining Optimal k")
+```
+
+- Elbow Point at k = 4:
+The plot exhibits a noticeable "elbow" around **k = 4**. Before **k = 4**, adding more clusters significantly reduces WSS, indicating substantial improvements in cluster compactness. Beyond **k = 4**, the rate of WSS reduction slows down, suggesting diminishing returns in clustering performance.
+
+Based on the Elbow Method, we determined that **4 clusters** is the optimal number for our dataset. This choice balances the complexity of the model with the effectiveness of clustering, ensuring that the clusters are well-defined without introducing unnecessary complexity.
+
+### **3.4.2. Silhouette Analysis**
+
+To further validate the optimal number of clusters, we employed the **Silhouette Analysis**. This method evaluates how similar each data point is to its own cluster compared to other clusters, providing a measure of cluster quality. 
+
+We calculated the average silhouette width for different values of **k**:
+
+```{r cluster-silhouette, cache=TRUE}
+# Silhouette analysis
+fviz_nbclust(clustering_data, kmeans, method = "silhouette") +
+  labs(title = "Silhouette Analysis for Determining Optimal k")
+```
+
+- Peak at k = 2:
+The highest average silhouette width occurs at **k = 2**, with a value of approximately **0.5**. This indicates that two clusters provide the best separation and cohesion, with data points being well-assigned to their respective clusters.
+- Decline After k = 2:
+After **k = 2**, the average silhouette width slightly decreases and stabilizes. This suggests that adding more clusters beyond two does not significantly enhance the clustering quality, as the improvement in silhouette width is minimal.
+
+The Silhouette Analysis corroborates the findings from the Elbow Method, reinforcing that **k = 2** is the optimal number of clusters for our dataset. This choice ensures that the clusters are both well-separated and cohesive, capturing the most meaningful groupings without unnecessary complexity.
+
+### **3.4.3. Gap Statistic**
+
+To further validate the optimal number of clusters (**k**) identified by the Elbow Method and Silhouette Analysis, we utilized the **Gap Statistic**. This method compares the total within-cluster variation to that expected under a reference null distribution, providing a robust criterion for selecting **k**.
+
+We setted k.max = 10 to evaluate up to ten clusters and B = 50 for bootstrap sampling to ensure reliability:
+
+```{r cluster-gap, cache=TRUE}
+# Gap statistic
+set.seed(123)
+gap_stat <- clusGap(clustering_data, FUN = kmeans, nstart = 25, K.max = 10, B = 50)
+fviz_gap_stat(gap_stat) +
+  labs(title = "Gap Statistic for Determining Optimal k")
+```
+
+- Peak at k = 4:
+The Gap Statistic plot reveals a significant increase in the gap value at **k = 4**, suggesting that four clusters provide a notably better fit compared to fewer clusters.
+- Diminishing Returns Beyond k = 4:
+Although the gap statistic continues to increase beyond **k = 4**, the rate of improvement slows down. This indicates that adding more clusters does not substantially enhance clustering quality, as evidenced by the plateauing of gap values.
+
+The Gap Statistic analysis indicates that **k = 4** is the optimal number of clusters for our dataset. This choice is supported by the significant peak at **k = 4**, where the gap statistic suggests a meaningful improvement in cluster separation and cohesion. Beyond this point, additional clusters yield diminishing returns, affirming that four clusters effectively capture the inherent groupings in the data without unnecessary complexity.
+
+### **3.4.4. Optimal Number of Clusters (k)**
+
+Selecting the appropriate number of clusters (**k**) is pivotal for effective clustering analysis. We utilized three distinct methods to determine the optimal **k** for our dataset: the **Elbow Method**, **Silhouette Analysis**, and the **Gap Statistic**.
+
+Considering the results from all three methods:
+
+- **Elbow Method:** Suggested **k = 4**
+- **Silhouette Analysis:** Suggested **k = 2**
+- **Gap Statistic:** Suggested **k = 4**
+
+To balance these findings, we determine that **k = 3** is the optimal number of clusters for our dataset. This choice serves as a compromise between the Elbow and Gap Statistic methods, which both indicate **k = 4**, and the Silhouette Analysis, which suggests **k = 2**. Selecting **k = 3** allows us to capture meaningful groupings within the data without overcomplicating the model, ensuring that the clusters are both distinct and representative of underlying patterns.
+
+## **3.5. Applying K-means Clustering**
+
+With the optimal number of clusters (**k = 3**) determined through the Elbow Method, Silhouette Analysis, and Gap Statistic, we proceed to apply the K-means clustering algorithm to our standardized dataset. K-means is an unsupervised learning algorithm that partitions data into **k** distinct, non-overlapping clusters based on feature similarities.
+
+```{r cluster-kmeans, cache=TRUE}
+# Apply K-means clustering with k = 3
+set.seed(123)
+kmeans_result <- kmeans(clustering_data, centers = 3, nstart = 25)
+
+# View the cluster assignments
+head(kmeans_result$cluster)
+
+# View the cluster centers
+print(kmeans_result$centers)
+
+# View the size of each cluster
+print(kmeans_result$size)
+
+# Total within-cluster sum of squares
+print(kmeans_result$tot.withinss)
 
 ```
 
+**Interpretation of Results:**
 
+- **Cluster 1 (1010 Countries):**
+  - **GDP_per_Capita:** Below average
+  - **Diet.low.in.fruits, Alochol.use, Diet.high.in.sodium:** Significantly above average
+This cluster represents countries with lower economic status and poorer dietary habits. High levels of low fruit consumption, alcohol use, and sodium intake indicate challenges in nutritional and health-related behaviors.
 
+- **Cluster 2 (273 Countries):**
+  - **GDP_per_Capita:** Significantly above average
+  - **Diet.low.in.fruits, Alochol.use, Diet.high.in.sodium:** Below average
+Countries in this cluster exhibit high economic status coupled with healthier dietary profiles. Lower instances of low fruit consumption, alcohol use, and sodium intake suggest better nutritional and health practices.
 
-## Classification
-# Section 3: Clustering
-This section will involve performing clustering analysis to discover patterns in the data.
+- **Cluster 3 (2502 Countries):**
+  - **GDP_per_Capita:** Slightly below average
+  - **Diet.low.in.fruits, Alochol.use, Diet.high.in.sodium:** Below average
+This cluster includes countries with slightly below-average economic status and relatively healthier dietary habits. Similar to Cluster 2, but with lower economic indicators, these countries maintain better nutritional behaviors despite modest economic standings.
 
-# Conclusion
-Summarize the key findings and insights from your analysis.
+The K-means clustering algorithm effectively grouped the countries into three distinct clusters based on their economic and dietary profiles:
+
+1. **Cluster 1:** Low GDP per capita and poor dietary habits.
+2. **Cluster 2:** High GDP per capita and healthy dietary habits.
+3. **Cluster 3:** Slightly below-average GDP per capita and healthy dietary habits.
+
+These clusters reveal meaningful patterns, highlighting the relationship between economic status and dietary behaviors. **Cluster 2** stands out with its combination of high economic indicators and healthy lifestyles, while **Cluster 1** highlights the challenges faced by lower-income countries in maintaining good dietary practices. **Cluster 3** bridges these groups, showcasing that even with modest economic standings, countries can achieve healthier dietary outcomes.
+
+## **3.6. Visualizing the Clustering Results**
+
+To gain a clearer understanding of the clustering outcomes, we visualized the clusters using **Principal Component Analysis (PCA)**. PCA reduces the dimensionality of the data, transforming the original features into principal components that capture the most variance. By projecting the data onto the first two principal components, we can effectively visualize the clustering results in a two-dimensional space.
+
+```{r cluster-visaul, cache=TRUE}
+# Visualize clusters using PCA
+fviz_cluster(kmeans_result, data = clustering_data,
+             ellipse.type = "convex",
+             geom = "point",
+             stand = FALSE,
+             show.clust.cent = TRUE) +
+  labs(title = "K-means Clustering Results (k = 3)") +
+  theme_minimal()
+```
+
+**Interpretation of Results:**
+
+- **Cluster 1:** Comprises countries with lower GDP per capita and poorer dietary habits, indicated by higher values in **Diet.low.in.fruits**, **Alochol.use**, and **Diet.high.in.sodium**.
+- **Cluster 2:** Represents countries with significantly higher GDP per capita and healthier dietary profiles, characterized by lower values in the same dietary features.
+- **Cluster 3:** Includes countries with moderate GDP per capita and relatively healthier dietary habits compared to Cluster 1, but not as pronounced as those in Cluster 2.
+
+The PCA-based visualization confirms that **k = 3** effectively captures the underlying patterns in the data, distinguishing a clearly separate group of economically prosperous and health-conscious countries (**Cluster 2**), while grouping countries with similar economic and dietary profiles into **Clusters 1 and 3**. This visualization validates our clustering choice, providing clear insights into the economic and dietary distinctions among the countries analyzed.
+
+## **3.7. Discussing the Impact of Distance Measure**
+
+In our clustering analysis, we utilized **Euclidean distance** as the distance metric. This choice plays a pivotal role in how the clustering algorithm groups the countries based on their feature similarities.
+
+By employing Euclidean distance on our **standardized** dataset, each feature contributes equally to the distance calculations. This means that countries are grouped together based on their overall similarity across all selected features—**GDP_per_Capita**, **Diet.low.in.fruits**, **Alochol.use**, and **Diet.high.in.sodium**. The standardization ensures that no single feature dominates the clustering process due to its scale, allowing the algorithm to consider the combined effect of all features uniformly.
+
+As a result, clusters formed using Euclidean distance reflect comprehensive profiles of the countries, capturing both economic and dietary characteristics cohesively. This leads to well-defined and meaningful groupings, as observed in our visualization where distinct clusters emerged based on the integrated feature values.
+
+Choosing Euclidean distance, in conjunction with data standardization, ensured that our clustering algorithm effectively identified groups of countries with similar economic and dietary profiles. This metric facilitated the formation of balanced and interpretable clusters, enhancing our ability to uncover underlying patterns within the data.
+
+## **3.8. Summary of Clustering Results**
+
+In this clustering analysis, we employed the **K-means algorithm** with **k = 3** to group countries based on their economic and dietary profiles. The optimal number of clusters was determined using the Elbow Method, Silhouette Analysis, and Gap Statistic, with the Gap Statistic reinforcing the choice of three clusters.
+
+**Cluster Characteristics:**
+
+- **Cluster 1 (1010 Countries):**
+   - **Economic Status:** Below-average GDP per capita.
+   - **Dietary Habits:** Higher levels of low fruit consumption, alcohol use, and high sodium intake.
+   - **Implications:** Represents countries with lower economic standing and poorer dietary practices, potentially correlating with higher mortality rates.
+- **Cluster 2 (273 Countries):**
+   - **Economic Status:** Significantly higher GDP per capita.
+   - **Dietary Habits:** Lower levels of low fruit consumption, alcohol use, and high sodium intake.
+   - **Implications:** Encompasses economically prosperous countries with healthier dietary profiles, likely associated with lower mortality rates.
+- **Cluster 3 (2502 Countries):**
+   - **Economic Status:** Slightly below-average GDP per capita.
+   - **Dietary Habits:** Relatively low levels of low fruit consumption, alcohol use, and high sodium intake.
+   - **Implications:** Includes countries with moderate economic status and healthier dietary behaviors compared to Cluster 1, indicating better health outcomes despite modest economic indicators.
+
+**Impact of Distance Measure:**
+
+Utilizing **Euclidean distance** on standardized data ensured that each feature contributed equally to the clustering process. This approach facilitated the formation of cohesive clusters based on overall similarity across economic and dietary factors, resulting in meaningful and interpretable groupings.
+
+**Effectiveness of Clustering:**
+
+The PCA-based visualization confirmed the distinctiveness of the three clusters:
+
+- **Cluster 2** was clearly separated, highlighting its unique combination of high economic status and healthy dietary habits.
+- **Clusters 1 and 3** exhibited some overlap, reflecting similarities in their feature profiles but maintaining distinct groupings based on economic and dietary differences.
+
+Overall, the clustering analysis successfully identified three distinct groups of countries, providing valuable insights into how economic and dietary factors interplay to influence mortality rates. These findings underscore the importance of both economic prosperity and healthy dietary practices in shaping health outcomes across different regions.
+
+# **Section 4: Interactive Exploration with Shiny App**
+
+To enhance the exploratory data analysis (EDA) and provide an interactive platform for users to delve deeper into the results, we developed a **Shiny App**. This application facilitates dynamic exploration of single variable performances, comparison of classification models, and visualization of clustering outcomes.
+
+## **4.1. Shiny App Overview**
+
+The Shiny App is designed with a user-friendly interface that organizes various analytical components into intuitive sections. It enables users to interactively explore:
+
+- **Exploratory Data Analysis:** Access to single-variable and multiple-variable visualizations.
+- **Single Variable Model Performance:** Assess the impact and performance metrics of individual features.
+- **Classification Model Performance:** Compare the performance of the Decision Tree and Logistic Regression classifiers.
+- **Clustering Results:** Visualize and interpret the clustering outcomes based on selected features.
+
+## **4.2. Demonstration Video**
+
+A short **2-3 minute video** demonstrates the functionalities of the Shiny App, highlighting its interactive features and how it supports exploratory data analysis. [**Watch the Demonstration Video Here**](#) *(Replace `#` with your actual YouTube link)*
+
+**Note:** The video includes a walkthrough of the app's interface, showcasing how to navigate between tabs, interact with plots, and interpret the results effectively.
+
+# **Conclusion**
+
+This project offered a thorough analysis of the factors influencing mortality rates across various countries by combining health-related metrics from the WHO dataset with economic indicators from the World Bank. One of the key findings is the significant economic impact on health outcomes; higher GDP per Capita is linked to lower mortality rates, underscoring the importance of economic prosperity in enhancing public health. Additionally, elevated levels of outdoor air pollution, high systolic blood pressure, smoking rates, and high sodium intake were found to correlate with increased mortality rates, highlighting the critical role of environmental and lifestyle factors in shaping health outcomes.
+
+In our predictive modeling efforts, we utilized Decision Tree and Logistic Regression classifiers to forecast mortality rates. The Decision Tree model outperformed Logistic Regression, effectively distinguishing between high and low mortality classes with greater accuracy and reliability. Furthermore, through K-means clustering, countries were categorized into distinct groups based on their economic and dietary profiles, revealing patterns that align closely with observed health outcomes.
+
+Based on these insights, several recommendations emerge. Public health policies should focus on implementing targeted interventions to reduce air pollution, promote healthy diets, and curb smoking to lower mortality rates. Strengthening economic growth strategies is also essential, as it lays the foundation for enhancing healthcare infrastructure and access. Additionally, enforcing stricter environmental regulations can mitigate the adverse effects of pollution on public health.
+
+Overall, the findings from this analysis emphasize the interconnectedness of economic status, environmental conditions, and lifestyle choices in determining mortality rates. By leveraging these insights, policymakers and health professionals can develop effective strategies and policies aimed at reducing mortality and improving global health standards.

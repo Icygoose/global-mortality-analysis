@@ -15,3 +15,9 @@ caret
 rpart
 rpart.plot
 pROC
+carData
+car
+lime
+factoextra
+cluster
+scales
