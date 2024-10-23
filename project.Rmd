@@ -26,6 +26,8 @@ library(rpart.plot)
 library(scales)
 ```
 
+[**Watch the Demonstration Video Here**](https://youtu.be/9IIQfb88t9U)
+
 # **Introduction**
 
 The objective of this project is to perform exploratory data analysis (EDA) and predictive modeling using the "Countries and Death Causes" dataset provided by the World Health Organisation (WHO). This dataset encompasses various health-related metrics for different countries over several years. Additionally, by integrating **GDP per Capita** data from the World Bank, we aim to examine the interplay between economic status and mortality rates. The primary goal is to uncover insights from the data and build predictive models to understand the factors influencing death rates. By analyzing these health and socioeconomic factors, we aim to identify key determinants of health outcomes and provide actionable recommendations for improving public health policies.
@@ -1440,9 +1442,9 @@ The Shiny App is designed with a user-friendly interface that organizes various 
 
 ## **4.2. Demonstration Video**
 
-A short **2-3 minute video** demonstrates the functionalities of the Shiny App, highlighting its interactive features and how it supports exploratory data analysis. [**Watch the Demonstration Video Here**](#) *(Replace `#` with your actual YouTube link)*
+A short **2-3 minute video** demonstrates the functionalities of the Shiny App, highlighting its interactive features and how it supports exploratory data analysis. [**Watch the Demonstration Video Here**](https://youtu.be/9IIQfb88t9U)
 
-**Note:** The video includes a walkthrough of the app's interface, showcasing how to navigate between tabs, interact with plots, and interpret the results effectively.
+The video includes a walkthrough of the app's interface, showcasing how to navigate between tabs, interact with plots, and interpret the results effectively.
 
 # **Conclusion**
 
